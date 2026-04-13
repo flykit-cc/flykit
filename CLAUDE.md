@@ -40,9 +40,12 @@ SETUP.md                            one-time setup checklist (org, repos, secret
 The public-facing website lives at **`github.com/flykit-cc/flykit-web`** (deploys to **flykit.cc**). Locally, most contributors keep it as a sibling folder.
 
 It's a Next.js 15 app that:
-- Reads this repo's `.claude-plugin/marketplace.json` + plugin READMEs via GitHub raw URLs at build time
-- Renders one page per plugin from that data
-- Rebuilds on push to this repo (via the `notify-web` workflow firing a Vercel deploy hook)
+- Reads this repo's `.claude-plugin/marketplace.json` + per-plugin `web.json` sidecars via GitHub raw URLs at build time (ISR, 1 hr)
+- Fetches live star count from the GitHub REST API
+- Renders one page per plugin from the merged data
+- Rebuilds on push to this repo via a cross-repo `workflow_dispatch` trigger (see `.github/workflows/notify-web.yml`)
+
+`web.json` lives at `plugins/<name>/web.json` and is kept separate from `plugin.json` so the Claude Code manifest schema stays clean. The site only reads `web.json`; Claude Code only reads `plugin.json` + `marketplace.json`.
 
 **When you touch plugin metadata or READMEs here, the website auto-updates within ~1 min.** No manual sync.
 
