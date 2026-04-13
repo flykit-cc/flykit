@@ -1,0 +1,40 @@
+name: PR check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate marketplace.json
+        run: jq empty .claude-plugin/marketplace.json
+
+      - name: Validate every plugin.json
+        run: |
+          set -e
+          found=0
+          while IFS= read -r f; do
+            echo "checking $f"
+            jq empty "$f"
+            found=$((found+1))
+          done < <(find plugins -name plugin.json)
+          echo "Validated $found plugin manifest(s)"
+
+      - name: Syntax-check plugin scripts
+        run: |
+          set -e
+          count=0
+          while IFS= read -r f; do
+            node --check "$f"
+            count=$((count+1))
+          done < <(find plugins -name '*.js' -not -path '*/node_modules/*')
+          echo "Syntax-checked $count script(s)"
