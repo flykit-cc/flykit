@@ -11,6 +11,7 @@
  *   node calculate-euer.js --year 2024 --include-review     # treat 'review' income as taxable
  */
 
+require('./lib/bootstrap');
 require('dotenv').config({ path: process.env.STEUER_ENV || '.env' });
 
 const fs = require('fs');
