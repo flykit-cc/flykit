@@ -1,0 +1,16 @@
+{
+  "name": "@flykit/steuer",
+  "version": "0.1.0",
+  "description": "German freelancer tax filing scripts (EÜR / ELSTER) for the flykit Claude Code plugin.",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "parse": "node scripts/parse-statements.js",
+    "calculate": "node scripts/calculate-euer.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "json2csv": "^6.0.0-alpha.2",
+    "pdfkit": "^0.15.1"
+  }
+}
