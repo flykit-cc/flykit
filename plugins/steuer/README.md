@@ -21,6 +21,20 @@ cd ~/.claude/plugins/installed/steuer && npm install
 
 (Path may vary by Claude Code version — the plugin will tell you where it lives.)
 
+## Where to run it
+
+Steuer acts on your current working directory — it reads your bank exports from there and writes reports back to the same place. You don't need a "steuer project" or a repo; just pick a folder where you want your tax data to live:
+
+```bash
+mkdir -p ~/taxes/2024 && cd ~/taxes/2024
+# drop your Wise CSV here, then:
+claude
+# inside Claude Code:
+/steuer:parse-statements 2024
+```
+
+Every skill works the same way — whatever directory you launched Claude Code from is what the plugin operates on.
+
 ## Setup
 
 Create a `.env` file in your project root (the directory you run Claude Code from):
