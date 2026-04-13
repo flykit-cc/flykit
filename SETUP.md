@@ -67,7 +67,13 @@ git push -u origin main
    rm -rf .vercel  # don't commit this
    ```
 
-5. Create a **Vercel deploy hook**: Vercel project → Settings → Git → Deploy Hooks → "Create Hook" → name it `flykit-marketplace-update`, branch `main` → copy the URL.
+5. Create a **GitHub fine-grained PAT** for cross-repo triggering (used by the `flykit` repo to dispatch `flykit-web`'s deploy workflow):
+   - https://github.com/settings/personal-access-tokens/new
+   - Token name: `flykit-cross-repo-trigger`
+   - Resource owner: `flykit-cc` (the org)
+   - Repository access: Only select repositories → `flykit-cc/flykit-web`
+   - Permissions → Repository permissions → **Actions: Read and write**
+   - Copy the token — you only see it once.
 
 ## 5 — Add GitHub secrets
 
@@ -87,7 +93,7 @@ Same place. Add one:
 
 | Secret | Value |
 |---|---|
-| `VERCEL_DEPLOY_HOOK_URL` | the deploy hook URL from step 4.5 |
+| `FLYKIT_WEB_DEPLOY_PAT` | the PAT from step 4.5 |
 
 ## 6 — Point DNS to Vercel
 
