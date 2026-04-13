@@ -7,6 +7,8 @@
  *   3. Summary (totals + net) with ECB methodology disclaimer
  */
 
+require('./lib/bootstrap');
+
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 

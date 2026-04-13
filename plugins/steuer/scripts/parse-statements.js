@@ -12,6 +12,7 @@
  *   node parse-statements.js --year 2024 --output ./out
  */
 
+require('./lib/bootstrap');
 require('dotenv').config({ path: process.env.STEUER_ENV || '.env' });
 
 const fs = require('fs');
