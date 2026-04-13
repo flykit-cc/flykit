@@ -1,7 +1,10 @@
-name: Notify flykit-web to rebuild
+name: Trigger flykit-web rebuild
 
-# When the marketplace or any plugin changes, ping the Vercel deploy hook
-# so flykit.cc rebuilds and shows the latest plugin metadata + READMEs.
+# When the marketplace or any plugin changes, dispatch the flykit-web
+# deploy workflow so flykit.cc rebuilds and shows the latest data.
+#
+# Requires a fine-grained PAT stored as FLYKIT_WEB_DEPLOY_PAT, scoped
+# to flykit-cc/flykit-web with "Actions: Read and write".
 
 on:
   push:
@@ -12,15 +15,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  notify:
+  trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel deploy hook
+      - name: Dispatch flykit-web deploy
         env:
-          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          GH_TOKEN: ${{ secrets.FLYKIT_WEB_DEPLOY_PAT }}
         run: |
-          if [ -z "$DEPLOY_HOOK" ]; then
-            echo "VERCEL_DEPLOY_HOOK_URL secret not set — skipping"
+          if [ -z "$GH_TOKEN" ]; then
+            echo "FLYKIT_WEB_DEPLOY_PAT secret not set — skipping"
             exit 0
           fi
-          curl -fsSL -X POST "$DEPLOY_HOOK" && echo "Deploy hook triggered"
+          gh workflow run deploy.yml -R flykit-cc/flykit-web --ref main
+          echo "Dispatched flykit-web deploy"
