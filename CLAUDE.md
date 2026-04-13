@@ -22,7 +22,7 @@ plugins/
     scripts/                        Node.js helpers, called via ${CLAUDE_PLUGIN_ROOT}/scripts/...
       sources/                      bank-agnostic transaction source interface
     references/                     markdown docs loaded on-demand (progressive disclosure)
-.github/workflows/notify-web.yml    on push, pings flykit-web Vercel deploy hook
+.github/workflows/notify-web.yml    on push, dispatches flykit-web deploy workflow
 SETUP.md                            one-time setup checklist (org, repos, secrets, DNS)
 ```
 
@@ -51,11 +51,7 @@ It's a Next.js 15 app that:
 
 ## Status
 
-- [x] Scaffolded: marketplace + steuer plugin ported + sanitized
-- [x] Cross-repo deploy hook wired
-- [ ] Not yet pushed to GitHub (see `SETUP.md`)
-- [ ] Vercel project not yet created
-- [ ] flykit.cc DNS not yet configured
+Work-in-progress items and bugs live on [GitHub Issues](https://github.com/flykit-cc/flykit/issues). This file describes stable architecture, not current state.
 
 ## Conventions
 
