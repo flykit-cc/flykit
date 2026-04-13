@@ -1,0 +1,39 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code (personal dev config — never committed)
+# Skills/commands/agents are distributed as plugins in this repo.
+# A contributor's local .claude/ is their own setup, not project state.
+.claude/
+
+# Build / output
+dist/
+build/
+out/
+output/
+coverage/
+
+# Plugin runtime data
+data/
+*.log

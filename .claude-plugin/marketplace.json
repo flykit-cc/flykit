@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "flykit",
+  "description": "Open-source Claude Code plugins for everyday workflows",
+  "owner": {"name": "kaiomp"},
+  "plugins": [
+    {
+      "name": "steuer",
+      "description": "German freelancer tax filing — fetch transactions, classify with AI, calculate EÜR, guide through ELSTER",
+      "source": "./plugins/steuer",
+      "version": "0.1.0",
+      "category": "finance",
+      "keywords": ["tax", "germany", "freelancer", "euer", "elster", "wise"],
+      "license": "MIT"
+    }
+  ]
+}
