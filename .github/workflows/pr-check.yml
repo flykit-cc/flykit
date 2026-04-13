@@ -9,6 +9,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify web.json author matches PR author
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -e
+          MAINTAINERS="kaiomp"
+          if echo "$MAINTAINERS" | tr ' ' '\n' | grep -qx "$PR_AUTHOR"; then
+            echo "PR author '$PR_AUTHOR' is a maintainer — skipping author check"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- 'plugins/*/web.json' || true)
+          if [ -z "$changed" ]; then
+            echo "No web.json changes in this PR — skipping author check"
+            exit 0
+          fi
+          fail=0
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            declared=$(jq -r '.author // empty' "$f")
+            if [ -z "$declared" ]; then
+              echo "::error file=$f::web.json is missing an 'author' field"
+              fail=$((fail+1))
+            elif [ "$declared" != "$PR_AUTHOR" ]; then
+              echo "::error file=$f::web.json declares author '$declared' but this PR is opened by '$PR_AUTHOR'. Open the PR under the claimed account, or ask a maintainer to land it."
+              fail=$((fail+1))
+            else
+              echo "ok: $f — author '$declared' matches PR author"
+            fi
+          done <<< "$changed"
+          if [ "$fail" -gt 0 ]; then exit 1; fi
 
       - name: Setup Node 22
         uses: actions/setup-node@v4
