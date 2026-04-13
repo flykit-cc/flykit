@@ -3,6 +3,8 @@
  * Free, no auth, serves official European Central Bank reference rates.
  */
 
+require('./lib/bootstrap');
+
 const rateCache = new Map(); // dateKey -> rate
 
 function extractDate(dateString) {

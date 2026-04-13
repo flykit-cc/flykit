@@ -5,6 +5,8 @@
  * augmented with `amountEUR` and optional `rate` from rateConverter.batchConvert.
  */
 
+require('./lib/bootstrap');
+
 const { parse } = require('json2csv');
 const fs = require('fs');
 

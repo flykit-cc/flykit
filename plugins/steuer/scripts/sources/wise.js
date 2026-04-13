@@ -10,6 +10,8 @@
  * Requires WISE_API_TOKEN in the environment.
  */
 
+require('../lib/bootstrap');
+
 const API_BASE = 'https://api.wise.com';
 const MAX_RETRIES = 3;
 

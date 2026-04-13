@@ -13,13 +13,7 @@ In Claude Code:
 /plugin install steuer@flykit
 ```
 
-Then install the script dependencies once:
-
-```bash
-cd ~/.claude/plugins/installed/steuer && npm install
-```
-
-(Path may vary by Claude Code version — the plugin will tell you where it lives.)
+That's it. The first time you invoke any `/steuer:*` skill, the plugin installs its npm dependencies automatically (requires Node.js >= 18 with `npm` on your `PATH`). Subsequent runs are instant.
 
 ## Where to run it
 

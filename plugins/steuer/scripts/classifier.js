@@ -9,6 +9,8 @@
  * See ../references/tax-categories.md for category guidance.
  */
 
+require('./lib/bootstrap');
+
 const INCOME_RULES = [
     // --- NOT TAXABLE ---
     {
