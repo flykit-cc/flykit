@@ -178,6 +178,10 @@ node plugins/<your-plugin>/scripts/<script>.js --year 2024
 5. Open a PR with a clear description: what changed, why, and how you tested it.
 6. The maintainer reviews and merges. The site at flykit.cc redeploys automatically via GitHub Actions on merge to `main`.
 
+## Announcements
+
+The site-wide announcement bar on [flykit.cc](https://flykit.cc) reads from `.flykit/announcement.json` at the root of this repo (kept outside `.claude-plugin/` so it doesn't pollute the Claude Code schema). The file has four fields: `text`, `href`, `label`, and `id`. Any field may be empty or missing — in which case the bar hides. The `id` is used by the website to remember per-announcement dismissals in `localStorage`; change the `id` to re-show the bar to users who previously dismissed it. Edits land on flykit.cc within about a minute via the `notify-web` workflow.
+
 ## Reporting issues
 
 File issues at https://github.com/flykit-cc/flykit/issues. Include:
