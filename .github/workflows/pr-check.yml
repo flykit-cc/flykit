@@ -57,3 +57,17 @@ jobs:
             count=$((count+1))
           done < <(find plugins -name '*.js' -not -path '*/node_modules/*')
           echo "Syntax-checked $count script(s)"
+
+      - name: Run plugin tests
+        run: |
+          set -e
+          ran=0
+          for dir in plugins/*/; do
+            if [ -f "$dir/package.json" ] && jq -e '.scripts.test' "$dir/package.json" > /dev/null; then
+              echo "::group::tests for $dir"
+              (cd "$dir" && npm install --no-audit --no-fund && npm test)
+              echo "::endgroup::"
+              ran=$((ran+1))
+            fi
+          done
+          echo "Ran tests for $ran plugin(s)"
