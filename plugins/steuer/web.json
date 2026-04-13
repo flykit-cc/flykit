@@ -1,0 +1,38 @@
+{
+  "displayName": "Steuer",
+  "author": "kaiomp",
+  "authorUrl": "https://github.com/kaiomp",
+  "categories": ["Finance", "Germany", "Freelancer"],
+  "tagline": "German freelancer tax filing — fetch transactions, classify with AI, calculate EUR, file via ELSTER.",
+  "description": "Steuer is a Claude Code plugin that automates the German freelancer tax workflow end-to-end. It parses Wise bank statements, classifies transactions into income and expense categories, calculates your EUR (Einnahmen-Ueberschuss-Rechnung), and walks you through filing via ELSTER.",
+  "features": [
+    "Parse Wise CSV bank statements into structured transactions",
+    "Convert USD income to EUR using official ECB reference rates",
+    "Classify transactions with Claude into German tax categories",
+    "Generate Finanzamt-ready PDF and CSV reports",
+    "Step-by-step ELSTER filing guide tailored to your numbers"
+  ],
+  "useCases": [
+    "Freelancers paid in USD via Wise who file taxes in Germany",
+    "Solopreneurs preparing their annual EUR for the Finanzamt",
+    "Anyone who needs ECB-rate currency conversion with an audit trail"
+  ],
+  "skills": [
+    {
+      "name": "parse-statements",
+      "description": "Parse Wise bank statements into structured transactions with date, amount, currency, and counterparty."
+    },
+    {
+      "name": "calculate-euer",
+      "description": "Calculate your Einnahmen-Ueberschuss-Rechnung from classified transactions, with USD-to-EUR conversion at ECB rates."
+    },
+    {
+      "name": "elster-guide",
+      "description": "Walk through ELSTER form filing line by line, mapping your EUR results to the right fields."
+    }
+  ],
+  "sources": [
+    { "label": "Wise Activities API", "url": "https://api.wise.com" },
+    { "label": "Frankfurter ECB rates", "url": "https://api.frankfurter.dev" }
+  ]
+}

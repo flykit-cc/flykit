@@ -46,6 +46,7 @@ flykit/
    ├── scripts/                       (if your plugin runs scripts)
    ├── references/                    (if your plugin has long reference docs)
    ├── README.md
+   ├── web.json                       (display metadata for flykit.cc)
    └── LICENSE                        (MIT recommended)
    ```
 
@@ -65,7 +66,30 @@ flykit/
    }
    ```
 
-5. **Write at least one skill.** Each skill is a Markdown file with YAML frontmatter:
+5. **Write `web.json`** (alongside `plugin.json`'s directory, at the plugin root). This is what [flykit.cc](https://flykit.cc) renders — it's separate from `plugin.json` so the Claude Code schema stays clean. See `plugins/steuer/web.json` for the full shape. Required fields:
+
+   ```json
+   {
+     "displayName": "Your Plugin",
+     "author": "your-github-handle",
+     "authorUrl": "https://github.com/your-handle",
+     "categories": ["Category A", "Category B"],
+     "tagline": "One-line pitch — shown in cards and hero.",
+     "description": "2–4 sentences. Shown on the plugin detail page.",
+     "features": ["Feature one", "Feature two", "..."],
+     "useCases": ["Who this is for — one line each", "..."],
+     "skills": [
+       { "name": "skill-name", "description": "What it does." }
+     ],
+     "sources": [
+       { "label": "External API", "url": "https://..." }
+     ]
+   }
+   ```
+
+   Stars + repo URL are fetched live from GitHub at build time — no need to maintain them here.
+
+6. **Write at least one skill.** Each skill is a Markdown file with YAML frontmatter:
 
    ```yaml
    ---
@@ -78,7 +102,7 @@ flykit/
 
    The body is a prompt for Claude — explain the task, the steps, and how to invoke any scripts. **Always reference scripts via `${CLAUDE_PLUGIN_ROOT}`**, never relative paths.
 
-6. **Make scripts black-box CLIs.** Each script should be runnable in isolation, e.g.:
+7. **Make scripts black-box CLIs.** Each script should be runnable in isolation, e.g.:
 
    ```bash
    node scripts/my-script.js --year 2024 --output ./out
@@ -86,7 +110,7 @@ flykit/
 
    Read configuration from `process.env` and from `~/.config/flykit/<plugin>/config.json`. Print clear error messages when required config is missing.
 
-7. **Sanitize.** No personal data, no real client / merchant names, no credentials. The repo is public.
+8. **Sanitize.** No personal data, no real client / merchant names, no credentials. The repo is public.
 
 ## Working on an existing plugin
 
