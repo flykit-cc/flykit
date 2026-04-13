@@ -31,6 +31,8 @@ Then install a plugin:
 
 flykit follows the standard Claude Code [plugin marketplace](https://docs.claude.com/en/docs/claude-code/plugins) format. The marketplace manifest lives at [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) and each plugin is a directory under [`plugins/`](./plugins) with its own manifest, skills, scripts, and references.
 
+Each plugin also has a [`web.json`](./plugins/steuer/web.json) sidecar alongside its manifest — that's what [flykit.cc](https://flykit.cc) renders (tagline, features, skills list, sources). The site fetches `marketplace.json` + each `web.json` + live GitHub star count at build time, so **pushes to `main` auto-publish to flykit.cc** within about a minute.
+
 ## Contributing
 
 PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to add a plugin, develop locally, and submit changes.
