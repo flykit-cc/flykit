@@ -34,9 +34,19 @@ function generatePDF({ outputPath, year, income, expenses, incomeTotals, expense
     doc.fontSize(12).text(`Tax Year: ${year}`, { align: 'center' });
     doc.moveDown();
 
-    if (accountInfo.bank) {
+    const headerLines = [
+        ['Bank', accountInfo.bank],
+        ['Bank Address', accountInfo.bankAddress],
+        ['Account Type', accountInfo.type],
+        ['Routing', accountInfo.routing],
+        ['Account Number', accountInfo.number],
+    ].filter(([, v]) => v && String(v).trim() !== '');
+
+    if (headerLines.length > 0) {
         doc.fontSize(9);
-        doc.text(`Bank: ${accountInfo.bank}`);
+        for (const [label, value] of headerLines) {
+            doc.text(`${label}: ${value}`);
+        }
         doc.moveDown();
     }
 

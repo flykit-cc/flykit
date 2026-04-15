@@ -33,6 +33,22 @@ This will:
 2. Apply rule-based classification (`taxable`, `not_taxable`, `review`).
 3. Write `./output/steuer-<YEAR>-classified.json` with all items.
 
+### Optional flags
+
+- `--profile <all|personal|business>` — restrict to one Wise profile type. Default is `all`. Example:
+
+  ```bash
+  node ${CLAUDE_PLUGIN_ROOT}/scripts/parse-statements.js --year 2024 --profile personal
+  ```
+
+  Invalid values and empty matches fail fast with the list of available profiles.
+
+- `--manual-expenses <path>` — merge additional expenses from a JSON file (array of `{ date, description, amount, currency }` objects; `currency` must be `EUR` or `USD`, `amount` must be positive). Entries are tagged `source: "manual"` and merged before classification. Example:
+
+  ```bash
+  node ${CLAUDE_PLUGIN_ROOT}/scripts/parse-statements.js --year 2024 --manual-expenses ./cash-receipts.json
+  ```
+
 If the script fails because `WISE_API_TOKEN` is missing, tell the user to:
 1. Copy `${CLAUDE_PLUGIN_ROOT}/.env.example` to `.env` in the project root.
 2. Add their token from https://wise.com/settings/account.

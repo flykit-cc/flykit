@@ -93,6 +93,10 @@ Print:
 
 Then suggest: "Run `/steuer:elster-guide <YEAR>` to walk through the ELSTER forms field by field."
 
+## PDF Header Env Vars
+
+The generated PDF header renders any of `ACCOUNT_NAME`, `ACCOUNT_BANK`, `ACCOUNT_BANK_ADDRESS`, `ACCOUNT_TYPE`, `ACCOUNT_ROUTING`, and `ACCOUNT_NUMBER` that are set in the user's `.env`. Only fields that are set appear; no blank lines are emitted. If none are set the header block is omitted. If the user wants a richer header, tell them to add the relevant `ACCOUNT_*` vars to their `.env` and re-run.
+
 ## Reference Files
 
 - `${CLAUDE_PLUGIN_ROOT}/references/tax-categories.md` — category definitions
