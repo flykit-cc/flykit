@@ -23,7 +23,6 @@ plugins/
       sources/                      bank-agnostic transaction source interface
     references/                     markdown docs loaded on-demand (progressive disclosure)
 .github/workflows/notify-web.yml    on push, dispatches flykit-web deploy workflow
-SETUP.md                            one-time setup checklist (org, repos, secrets, DNS)
 ```
 
 ## Key architectural decisions
