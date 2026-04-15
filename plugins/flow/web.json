@@ -19,7 +19,7 @@
     "Codebases that want consistent reviews, issue hygiene, and CI checks before push",
     "Anyone tired of re-explaining their stack to Claude on every session"
   ],
-  "commands": [
+  "skills": [
     {"name": "init", "description": "Bootstrap a new project with .claude/config.md and CLAUDE.md tailored to your stack."},
     {"name": "start", "description": "Begin a session: load issues, pick work, choose a mode, and route through the agent pipeline."},
     {"name": "continue", "description": "Resume the last session from session-progress.md exactly where you left off."},
