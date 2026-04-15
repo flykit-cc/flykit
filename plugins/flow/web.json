@@ -29,5 +29,9 @@
     {"name": "cleanup", "description": "Run format and lint with auto-fix; report what remains."},
     {"name": "health", "description": "Verify your workflow setup: config, hooks, required commands, PM backend connectivity."},
     {"name": "deep-review", "description": "Fan out parallel reviewers over the current diff, then loop fixes until BREAKS and SECURITY are zero."}
+  ],
+  "sources": [
+    { "label": "Claude Code plugin docs", "url": "https://docs.claude.com/en/docs/claude-code/plugins" },
+    { "label": "flykit marketplace", "url": "https://github.com/flykit-cc/flykit" }
   ]
 }
