@@ -12,6 +12,15 @@
       "category": "finance",
       "keywords": ["tax", "germany", "freelancer", "euer", "elster", "wise"],
       "license": "MIT"
+    },
+    {
+      "name": "flow",
+      "description": "Stack-agnostic AI dev workflow — 9 slash commands, 8 specialist agents, and hooks that layer with your project's .claude/ setup",
+      "source": "./plugins/flow",
+      "version": "0.1.0",
+      "category": "workflow",
+      "keywords": ["workflow", "agents", "hooks", "productivity", "devops", "orchestration"],
+      "license": "MIT"
     }
   ]
 }
