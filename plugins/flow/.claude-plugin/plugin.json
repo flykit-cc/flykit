@@ -1,0 +1,10 @@
+{
+  "name": "flow",
+  "version": "0.1.0",
+  "description": "Reusable AI dev workflow for Claude Code: orchestrated agents, session lifecycle, deep reviews, and project-aware slash commands.",
+  "author": {"name": "kaiomp"},
+  "homepage": "https://flykit.cc/plugins/flow",
+  "repository": "https://github.com/flykit-cc/flykit",
+  "license": "MIT",
+  "keywords": ["workflow", "agents", "orchestration", "devops", "productivity", "review"]
+}

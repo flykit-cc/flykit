@@ -1,0 +1,33 @@
+{
+  "displayName": "Flow",
+  "author": "kaiomp",
+  "authorUrl": "https://github.com/kaiomp",
+  "categories": ["Productivity", "Workflow", "DevOps"],
+  "tagline": "An opinionated AI dev workflow for Claude Code — session lifecycle, orchestrated agents, and deep reviews that work in any repo.",
+  "description": "Flow packages a battle-tested workflow for shipping software with Claude Code. It wires up nine slash commands, eight specialized agents, and a handful of hooks so every session starts, runs, and ships consistently — while staying stack-agnostic by reading project specifics from a per-repo config.md.",
+  "features": [
+    "Nine slash commands covering the full session lifecycle: init, start, continue, pause, push",
+    "Eight specialized agents (investigator, architect, coder, reviewer, scout, issuer, websearch, ci-check) coordinated by a main orchestrator",
+    "Project-agnostic: dev/lint/test/build commands come from your repo's .claude/config.md",
+    "Issue tracking that adapts to your backend (GitHub Issues, Linear, or local files)",
+    "Deep-review mode that fans out parallel reviewers and loops fixes until clean",
+    "Audit and health commands that surface code smells, stale docs, and broken setup before they bite"
+  ],
+  "useCases": [
+    "Solo developers who want a repeatable AI workflow across many repos",
+    "Small teams standardizing how they ship features with Claude Code",
+    "Codebases that want consistent reviews, issue hygiene, and CI checks before push",
+    "Anyone tired of re-explaining their stack to Claude on every session"
+  ],
+  "commands": [
+    {"name": "init", "description": "Bootstrap a new project with .claude/config.md and CLAUDE.md tailored to your stack."},
+    {"name": "start", "description": "Begin a session: load issues, pick work, choose a mode, and route through the agent pipeline."},
+    {"name": "continue", "description": "Resume the last session from session-progress.md exactly where you left off."},
+    {"name": "pause", "description": "Save WIP, shut down agents cleanly, and commit a checkpoint without pushing."},
+    {"name": "push", "description": "Finalize: run CI checks, close issues, update docs, commit, and push (or open a PR in team mode)."},
+    {"name": "audit", "description": "Scan the codebase for smells, security holes, stale docs, and dead code; file selected findings as issues."},
+    {"name": "cleanup", "description": "Run format and lint with auto-fix; report what remains."},
+    {"name": "health", "description": "Verify your workflow setup: config, hooks, required commands, PM backend connectivity."},
+    {"name": "deep-review", "description": "Fan out parallel reviewers over the current diff, then loop fixes until BREAKS and SECURITY are zero."}
+  ]
+}
