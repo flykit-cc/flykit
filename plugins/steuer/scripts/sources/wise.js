@@ -186,17 +186,34 @@ function categorizeActivities(activities, selfNames = []) {
  * @param {string} [opts.profile] - 'all' | 'personal' | 'business' | profile ID
  * @returns {Promise<{ income: Array, expenses: Array }>}
  */
+const VALID_PROFILE_VALUES = ['all', 'personal', 'business'];
+
+function filterProfiles(allProfiles, profile = 'all') {
+    if (profile === undefined || profile === null || profile === '' || profile === 'all') {
+        return allProfiles;
+    }
+    if (!VALID_PROFILE_VALUES.includes(profile) && !/^\d+$/.test(String(profile))) {
+        throw new Error(
+            `Invalid --profile value "${profile}". Valid choices: ${VALID_PROFILE_VALUES.join(', ')}.`
+        );
+    }
+    const matched = allProfiles.filter(
+        p => p.type === profile || String(p.id) === String(profile)
+    );
+    if (matched.length === 0) {
+        const available = allProfiles.map(p => `${p.type} (${p.name})`).join(', ') || 'none';
+        throw new Error(
+            `No Wise profile matched --profile=${profile}. Available profiles: ${available}`
+        );
+    }
+    return matched;
+}
+
 async function fetchTransactions({ year, profile = 'all' } = {}) {
     if (!year) throw new Error('fetchTransactions: year is required');
 
     const allProfiles = await getProfiles();
-    const profiles = (!profile || profile === 'all')
-        ? allProfiles
-        : allProfiles.filter(p => p.type === profile || String(p.id) === String(profile));
-
-    if (profiles.length === 0) {
-        throw new Error(`No matching Wise profile found for: ${profile}`);
-    }
+    const profiles = filterProfiles(allProfiles, profile);
 
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
@@ -226,5 +243,7 @@ module.exports = {
     getProfiles,
     getActivities,
     categorizeActivities,
+    filterProfiles,
+    VALID_PROFILE_VALUES,
     wiseRequest,
 };
