@@ -73,14 +73,27 @@ Create a `.env` file in the directory you run Claude Code from:
 # Required if you use the Wise source
 WISE_API_TOKEN=your_token_here
 
-# Optional — printed in the PDF report header
+# Optional — printed in the PDF report header (set any subset)
 ACCOUNT_NAME=Your Name
 ACCOUNT_BANK=Your Bank
+ACCOUNT_BANK_ADDRESS=1 Example Street, City, Country
+ACCOUNT_TYPE=Checking
+ACCOUNT_ROUTING=SWIFT/BIC or routing number
+ACCOUNT_NUMBER=IBAN or local account number
 ```
 
 **Getting a Wise token.** [wise.com → Settings → API tokens](https://wise.com/settings/account). Read-only scope is enough — the plugin never writes to Wise. The token stays in your local `.env`; it's read by `process.env.WISE_API_TOKEN` on your machine and used only to call `api.wise.com` directly.
 
-**More PDF-header fields are on the way.** Issue [#13](https://github.com/flykit-cc/flykit/issues/13) tracks wiring up `ACCOUNT_ROUTING`, `ACCOUNT_NUMBER`, `ACCOUNT_TYPE`, and `ACCOUNT_BANK_ADDRESS` for the PDF header. Until that lands, don't bother setting them — they have no effect.
+**PDF header fields.** Only the fields you set are rendered; nothing appears blank.
+
+| Env var | When to set |
+|---|---|
+| `ACCOUNT_NAME` | Always — shown as the centered title of the PDF. |
+| `ACCOUNT_BANK` | If the Finanzamt needs to see which institution holds the account. |
+| `ACCOUNT_BANK_ADDRESS` | When the bank's postal address matters (e.g. foreign banks). |
+| `ACCOUNT_TYPE` | To distinguish personal vs. business / checking vs. savings. |
+| `ACCOUNT_ROUTING` | ABA / SWIFT / BIC / sort code when relevant. |
+| `ACCOUNT_NUMBER` | IBAN or local account number for the header. |
 
 Optional non-secret preferences (default year, source, output dir) can live in `~/.config/flykit/steuer/config.json`:
 
@@ -109,6 +122,17 @@ Fetches a year of transactions from the configured source and classifies each in
 Output: `./output/steuer-<YEAR>-classified.json`
 
 This file is the single source of truth for the next step. Edit it by hand if you disagree with any classification — the calculator reads whatever's on disk.
+
+**Flags.**
+
+- `--profile <all|personal|business>` (Wise only, default `all`) — restrict fetching to one Wise profile type. Unknown values and empty result sets fail fast listing what's available.
+- `--manual-expenses <path>` — merge a JSON array of extra expense entries into the run. Each entry must have `date` (YYYY-MM-DD), `description`, `amount` (positive number), and `currency` (`EUR` or `USD`). Useful for cash receipts, non-Wise direct debits, or expenses your bank export misses.
+
+```json
+[
+  { "date": "2024-07-03", "description": "Cash receipt — printer paper", "amount": 12.40, "currency": "EUR" }
+]
+```
 
 ### 2. `/steuer:calculate-euer [year]`
 

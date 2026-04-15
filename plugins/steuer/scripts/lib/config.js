@@ -36,6 +36,10 @@ const DEFAULTS = {
     account: {
         name: process.env.ACCOUNT_NAME || '',
         bank: process.env.ACCOUNT_BANK || '',
+        routing: process.env.ACCOUNT_ROUTING || '',
+        number: process.env.ACCOUNT_NUMBER || '',
+        type: process.env.ACCOUNT_TYPE || '',
+        bankAddress: process.env.ACCOUNT_BANK_ADDRESS || '',
     },
 };
 
