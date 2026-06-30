@@ -35,15 +35,26 @@ Convention:
 - Markdown with a clear top-level structure (each agent's prompt enforces it)
 - The orchestrator is responsible for cleaning up `/tmp/flow-session/` at session boundaries (`/flow:start` clears it, `/flow:push` clears it after success)
 
+## Deterministic helper layer
+
+Commands push their *mechanics* into shell helpers under `${CLAUDE_PLUGIN_ROOT}/scripts/` so the LLM only narrates and decides. Each helper is a black-box CLI with subcommands that print results to stdout — no tokens spent on git plumbing.
+
+- `pause-helpers.sh` — `changed-files`, `diff-since-pause`, `write-marker`/`read-marker`, `log-block`, `trim-or-delete-progress`, `drift-check`, `save-memory`, `finish`. Used by `/flow:pause`.
+- `continue-helpers.sh` — `check-progress`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
+- `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.claude/config.md` (`flow_extract`, `flow_secret_globs`, `flow_dev_port`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
+
+These helpers also touch a few machine-local state files (all under the project, all gitignore-worthy): `session-log.md` (append-only dated blocks), `.claude/state/last-pause` (the pause marker), `.claude/.stop-check.log` (background lint output), and `.build-check` (the one-shot build-gate marker armed by `/flow:push`).
+
 ## Shutdown protocol
 
-Long-running agents (typically `coder` in a multi-file change) check for `/tmp/flow-session/shutdown_request` periodically. When present, they:
+Long-running agents (typically `coder` in a multi-file change) are shut down two ways, used together:
 
-1. Finish the current edit (don't leave a half-written file)
-2. Flush their handoff file with whatever progress was made
-3. Exit cleanly
+1. The orchestrator sends `shutdown_request` via `SendMessage` to a named running agent the moment it reports — this is how `/flow:autopilot` keeps the team lean.
+2. As a fallback for agents that poll the filesystem, the orchestrator writes `/tmp/flow-session/shutdown_request`. A polling agent then finishes the current edit (no half-written files), flushes its handoff file, and exits cleanly.
 
 `/flow:pause` and `/flow:push` create the shutdown_request file and wait up to 30 seconds before proceeding. This is best-effort — agents that don't poll will simply finish at their own pace.
+
+> Note for autopilot: do NOT use `TeamCreate` / `TeamDelete` / `TaskCreate` / `TaskUpdate` to manage agents. They write to `~/.claude/` and reset `bypassPermissions`, which breaks `mode: "auto"` autonomy. Spawn agents directly with the `Agent` tool and shut them down with `SendMessage`.
 
 ## File ownership for parallel coders
 

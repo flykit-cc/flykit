@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# lib.sh — shared, sourced helpers for the flow plugin's scripts and hooks.
+#
+# Everything here is config-driven: values come from the *project's*
+# .claude/config.md, never hardcoded to a stack. Source this from a script:
+#
+#   SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#   . "$SOURCE_DIR/lib.sh"          # from scripts/
+#   . "$SOURCE_DIR/../scripts/lib.sh"  # from hooks/
+#
+# All functions degrade gracefully: missing config, missing git, missing jq.
+
+# Resolve the project root. Prefer the Claude-provided project dir, then the
+# git toplevel, then the current directory. Never fails.
+flow_project_root() {
+    if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "$CLAUDE_PROJECT_DIR" ]; then
+        printf '%s' "$CLAUDE_PROJECT_DIR"
+        return 0
+    fi
+    local root
+    root="$(git rev-parse --show-toplevel 2>/dev/null)"
+    if [ -n "$root" ]; then printf '%s' "$root"; return 0; fi
+    printf '%s' "$PWD"
+}
+
+# Absolute path to the project's config.md (may not exist).
+flow_config_path() {
+    printf '%s/.claude/config.md' "$(flow_project_root)"
+}
+
+# Extract a `key: value` (or `- key: value`) from config.md. Strips surrounding
+# quotes and backticks. Prints empty string when the key or the file is absent.
+# Takes the LAST matching line so a later override wins.
+flow_extract() {
+    local key="$1"
+    local config
+    config="$(flow_config_path)"
+    [ -f "$config" ] || { printf ''; return 0; }
+    grep -E "^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:" "$config" 2>/dev/null \
+        | tail -n1 \
+        | sed -E "s/^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:[[:space:]]*//" \
+        | sed -E 's/[[:space:]]*$//' \
+        | sed -E 's/^["'\''`]//; s/["'\''`]$//'
+}
+
+# Space/newline-separated list of glob patterns that name secret files.
+# Config key: secret_globs (space-separated). Falls back to a conservative
+# default that catches env files, private keys, and common credential blobs.
+flow_secret_globs() {
+    local v
+    v="$(flow_extract secret_globs)"
+    if [ -n "$v" ]; then
+        printf '%s' "$v"
+    else
+        printf '%s' '.env .env.* *.env *.env.* *.pem *.key id_rsa *_rsa *.p12 *.pfx *.keystore credentials.json token.json *secret* *.gpg'
+    fi
+}
+
+# Build an ERE that matches any secret glob, for grepping a shell command line.
+# Converts a few glob metachars to regex. Best-effort; defense-in-depth only.
+flow_secret_regex() {
+    local glob out=""
+    for glob in $(flow_secret_globs); do
+        # Escape regex specials, then translate glob * and . back.
+        local re
+        re="$(printf '%s' "$glob" | sed -E 's/[].[^$()+{}|\\]/\\&/g; s/\*/[^[:space:]]*/g')"
+        if [ -z "$out" ]; then out="$re"; else out="$out|$re"; fi
+    done
+    printf '%s' "$out"
+}
+
+# Does a path match any secret glob? Returns 0 (match) / 1 (no match).
+flow_path_is_secret() {
+    local path="$1" glob base
+    base="$(basename "$path")"
+    for glob in $(flow_secret_globs); do
+        # shellcheck disable=SC2254
+        case "$path" in $glob|*/$glob) return 0;; esac
+        # shellcheck disable=SC2254
+        case "$base" in $glob) return 0;; esac
+    done
+    return 1
+}
+
+# The dev server's port, if the project pins one (config key: dev_port).
+# Empty when unset — callers should skip port checks rather than guess.
+flow_dev_port() {
+    flow_extract dev_port
+}
+
+# Durable cross-session memory directory (config key: memory_path). Expands a
+# leading ~ . Empty when unset, in which case memory features are skipped.
+flow_memory_path() {
+    local v
+    v="$(flow_extract memory_path)"
+    [ -z "$v" ] && { printf ''; return 0; }
+    case "$v" in
+        "~"|"~/"*) v="$HOME/${v#"~"/}";;
+    esac
+    printf '%s' "$v"
+}

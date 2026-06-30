@@ -17,11 +17,17 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
   settings.json                      Claude Code settings, hook overrides, MCP servers
   CLAUDE.md  (lives at project root) instructions to Claude in this repo
 
-<your-project>/                      (your project's own state)
+<your-project>/                      (your project's own state — all gitignore-worthy)
   CLAUDE.md                          project instructions (template-seeded, then grows)
   session-progress.md                created by /flow:start, removed by /flow:push (solo)
+  session-log.md                     append-only dated session blocks (written by /flow:pause)
+  .claude/state/last-pause           pause marker (HEAD/branch/timestamp)
+  .claude/.stop-check.log            background lint/format output from the Stop hook
+  .build-check                       one-shot build-gate marker, armed by /flow:push
   issues/                            only when pm_backend = local
 ```
+
+The state files above are machine-local working memory. Add them to `.gitignore` (except `issues/`, which you may want to track). Durable cross-session memory lives outside the repo at `memory_path` (see config-template.md).
 
 ## Who owns what
 

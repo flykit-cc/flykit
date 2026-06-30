@@ -11,6 +11,10 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 0
 fi
 
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../scripts/lib.sh
+. "$SOURCE_DIR/../scripts/lib.sh"
+
 INPUT=$(cat 2>/dev/null || true)
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 
@@ -20,6 +24,12 @@ block() {
     printf '[flow file-protection] Blocked write to "%s": %s\n' "$FILE_PATH" "$1" >&2
     exit 2
 }
+
+# Project-configured secret globs (config: secret_globs) take precedence so the
+# same patterns guard reads (secret-guard.sh) and writes.
+if flow_path_is_secret "$FILE_PATH"; then
+    block "matches a configured secret_globs pattern — edit manually"
+fi
 
 case "$FILE_PATH" in
     *.env|*.env.*|*/.env|*/.env.*)

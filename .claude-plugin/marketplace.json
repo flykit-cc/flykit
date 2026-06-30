@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "flykit",
   "description": "Open-source Claude Code plugins for everyday workflows",
-  "owner": {"name": "kaiomp"},
+  "owner": { "name": "kaiomp" },
   "plugins": [
     {
       "name": "steuer",
@@ -15,11 +15,18 @@
     },
     {
       "name": "flow",
-      "description": "Stack-agnostic AI dev workflow — 9 slash commands, 8 specialist agents, and hooks that layer with your project's .claude/ setup",
+      "description": "Stack-agnostic AI dev workflow — 10 slash commands, 8 specialist agents, and hooks that layer with your project's .claude/ setup",
       "source": "./plugins/flow",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "workflow",
-      "keywords": ["workflow", "agents", "hooks", "productivity", "devops", "orchestration"],
+      "keywords": [
+        "workflow",
+        "agents",
+        "hooks",
+        "productivity",
+        "devops",
+        "orchestration"
+      ],
       "license": "MIT"
     }
   ]
