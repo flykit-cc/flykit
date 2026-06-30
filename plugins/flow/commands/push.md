@@ -20,6 +20,8 @@ Spawn the `ci-check` agent via the `Agent` tool. It runs the configured commands
 
 If any check fails, stop. Report failures to the user and ask whether to fix now (spawn `coder`) or abort. Do not push on a failing build.
 
+**Arm the build gate.** Before returning control, `touch "$CLAUDE_PROJECT_DIR/.build-check"`. This is a deliberate one-shot gate: the next time the session stops, `stop-check.sh` runs `build_cmd` + `test_cmd` synchronously and blocks if they fail, then removes the marker. It is the safety net that catches anything `ci-check` missed. (Routine stops stay fast — they only ever lint/format in the background.)
+
 ## Step 4: Close issues
 
 Read the issues worked in this session from `session-progress.md`. For each:
