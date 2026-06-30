@@ -11,6 +11,28 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-protection.sh\"",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
@@ -21,16 +43,14 @@
             "timeout": 20
           }
         ]
-      }
-    ],
-    "PreToolUse": [
+      },
       {
-        "matcher": "Write|Edit",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-protection.sh\"",
-            "timeout": 3
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/post-bash-reap.sh\"",
+            "timeout": 5
           }
         ]
       }
