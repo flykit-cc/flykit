@@ -67,3 +67,66 @@ Examples (replace with your own — these are illustrative, not defaults):
 - known_pitfalls_path: CLAUDE.md
 
 See the plugin's `references/known-pitfalls.md` for how to grow this list over time.
+
+---
+
+## Dev server
+
+> Optional. The port your dev server listens on. `/flow:continue` uses it to detect
+> whether the server is already running (reuse) vs. the port is taken by another
+> project (start on a different port). Leave blank to skip the port check.
+
+- dev_port:
+
+---
+
+## Durable memory
+
+> Optional. Absolute (or `~`-prefixed) path to this project's cross-session memory
+> directory. When set, `/flow:pause` auto-writes ≤4 memory candidates per pause and
+> keeps a `MEMORY.md` index there; `/flow:autopilot` records audit history there.
+> Leave blank to disable all memory features.
+> Tip: Claude Code derives a per-project slug from the repo's absolute path, e.g.
+> `~/.claude/projects/-Users-you-Documents-GitHub-yourrepo/memory`.
+
+- memory_path:
+
+---
+
+## Secret protection
+
+> Optional. Space-separated glob patterns naming files that must never be read,
+> written, or committed. The same list guards the file-protection (write),
+> secret-guard (Read tool + shell `cat`/`grep`/…), and pause `finish` commit hooks.
+> Defaults to a conservative set covering env files, private keys, and common
+> credential blobs.
+
+- secret_globs: .env .env.* *.env *.env.* *.pem *.key id_rsa *_rsa *.p12 *.pfx *.keystore credentials.json token.json *secret* *.gpg
+
+---
+
+## Orphan-process reaping
+
+> Optional. When `true`, the `post-bash-reap` PostToolUse hook kills the direct
+> subprocess descendants of each Bash tool call (cleans up stray dev servers,
+> scanners, docker exec, etc.). OFF by default — enable only if you do NOT rely on
+> backgrounding a long-running process from inside a single tool call.
+
+- reap_orphans: false
+
+---
+
+## Drift-check tuning
+
+> Optional. `/flow:pause`'s `drift-check` flags likely-missing doc updates. These
+> keys tune its heuristics; all have sane generic defaults, so most projects leave
+> them blank.
+
+- schema_glob: *schema*
+- docs_glob: docs/
+- route_pattern:
+
+`schema_glob` matches data-model files (warns if they change without a docs/spec change).
+`docs_glob` is where specs/docs live. `route_pattern` is an extended-regex matching newly
+added route/endpoint declarations; the default covers common Express/Nest/Flask/Convex
+shapes — override it for your framework if needed.
