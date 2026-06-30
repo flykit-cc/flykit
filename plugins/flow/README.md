@@ -30,6 +30,7 @@ This creates `.claude/config.md` (project-level config) and `CLAUDE.md` (project
 | `/flow:cleanup`      | Tidy stray branches, stale session files, and `/tmp/flow-session/`.     |
 | `/flow:health`       | Inspect the project's flow setup and report missing pieces.             |
 | `/flow:deep-review`  | Spawn the reviewer agent with extra rigor on the working diff.          |
+| `/flow:autopilot`    | Autonomous multi-sprint loop: agent team, deep-review, push, repeat.    |
 
 ## Agents
 
@@ -64,19 +65,28 @@ Agents communicate through files in `/tmp/flow-session/` (e.g. `investigation.md
 | `test_cmd`             | Test command                                           |
 | `format_cmd`           | Formatter command                                      |
 | `known_pitfalls_path`  | Path (relative to project root) to a pitfalls doc      |
+| `dev_port`             | Dev server port (lets `/flow:continue` detect a running server) |
+| `memory_path`          | Cross-session memory dir (`/flow:pause` auto-saves here) |
+| `secret_globs`         | Space-separated globs for files the hooks must never read/write/commit |
+| `reap_orphans`         | `true` to enable the orphan-subprocess reaper (default off) |
+| `schema_glob` / `docs_glob` / `route_pattern` | Optional drift-check heuristics tuning |
 
-Hooks (auto-lint, stop-check, file-protection) read these values. Nothing is hardcoded — `flow` adapts to your stack.
+Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adapts to your stack. See `references/config-template.md` for the full annotated template.
 
 ## Hooks
 
-| Hook                | When                       | What                                                 |
-| ------------------- | -------------------------- | ---------------------------------------------------- |
-| `session-context`   | UserPromptSubmit           | Surfaces branch + dirty file count + current goal.   |
-| `auto-lint`         | PostToolUse (Write/Edit)   | Runs `format_cmd` + `lint_cmd` on the touched file.  |
-| `file-protection`   | PreToolUse (Write/Edit)    | Blocks edits to env files, lockfiles, `.git/`, etc.  |
-| `stop-check`        | Stop                       | Runs `lint_cmd` + `typecheck_cmd` before returning.  |
+| Hook                | When                       | What                                                                  |
+| ------------------- | -------------------------- | --------------------------------------------------------------------- |
+| `session-context`   | UserPromptSubmit           | Surfaces branch + dirty file count + current goal.                    |
+| `auto-lint`         | PostToolUse (Write/Edit)   | Runs `format_cmd` + `lint_cmd` on the touched file.                   |
+| `post-bash-reap`    | PostToolUse (Bash)         | Opt-in (`reap_orphans: true`): reaps orphan subprocesses after Bash.  |
+| `file-protection`   | PreToolUse (Write/Edit)    | Blocks writes to env files, lockfiles, `.git/`, and `secret_globs`.   |
+| `secret-guard`      | PreToolUse (Read/Bash)     | Blocks reading secret files via the Read tool or shell `cat`/`grep`.  |
+| `stop-check`        | Stop                       | Background lint/format by default; synchronous build/test gate only when `/flow:push` armed `.build-check`. |
 
-All hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init`.
+All hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init`. The Stop hook keeps a `.stop_hook_active` recursion guard so a self-continuing session never loops.
+
+The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`.
 
 ## Learn more
 
