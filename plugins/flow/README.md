@@ -73,6 +73,19 @@ Agents communicate through files in `/tmp/flow-session/` (e.g. `investigation.md
 
 Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adapts to your stack. See `references/config-template.md` for the full annotated template.
 
+### Commit `config.md` — the gitignore carve-out
+
+`.claude/config.md` is project-wide truth, not a personal preference: it is how the same globally-installed plugin adapts to each repo's stack. Commit it.
+
+Many repos gitignore `.claude/` wholesale to keep personal Claude Code state out of the project. That silently drops `config.md` too, and collaborators (or your other machines) lose the stack setup. Use a carve-out instead:
+
+```gitignore
+.claude/*
+!.claude/config.md
+```
+
+Note the `.claude/*` form — with a plain `.claude/` directory rule, git ignores the directory itself and the `!` negation inside it has no effect. Personal files like `settings.local.json` stay ignored either way.
+
 ## Hooks
 
 | Hook                | When                       | What                                                                  |

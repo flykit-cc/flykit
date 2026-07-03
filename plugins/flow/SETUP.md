@@ -57,11 +57,22 @@ pm_linear_team: <TEAM_KEY>
 
 (Linear support requires the Linear MCP to be configured separately.)
 
-## 3. (Optional) Enable strict file protection
+## 3. Commit `.claude/config.md`
+
+`config.md` is project-wide truth — commit it so collaborators and your other machines get the same stack setup. If your `.gitignore` ignores `.claude/`, switch to a carve-out:
+
+```gitignore
+.claude/*
+!.claude/config.md
+```
+
+(The `.claude/*` form matters: git cannot re-include a file inside a directory ignored with a plain `.claude/` rule.)
+
+## 4. (Optional) Enable strict file protection
 
 `file-protection.sh` is on by default and blocks writes to env files, lockfiles, `.git/`, `node_modules/`, and `.claude/settings.local.json`. To customise, edit `${CLAUDE_PLUGIN_ROOT}/hooks/file-protection.sh` (or fork the plugin).
 
-## 4. (Optional) Enable build-on-stop
+## 5. (Optional) Enable build-on-stop
 
 `stop-check.sh` runs lint + typecheck before Claude returns control. To also run `build_cmd` on stop, create an empty marker:
 
@@ -71,7 +82,7 @@ touch .build-check
 
 Remove it to disable. This is opt-in because builds are slow.
 
-## 5. Verify
+## 6. Verify
 
 Run a quick health check:
 

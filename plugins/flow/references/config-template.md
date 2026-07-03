@@ -4,7 +4,7 @@ This file lives at `.claude/config.md` in your project. The `flow` plugin's comm
 
 It is intentionally markdown — easy to read, easy to edit by hand. Values go after the colon on each line. Comments start with `<!--` or `>` blockquotes and are ignored.
 
-Keep this file in version control. It is project-wide truth, not a personal preference.
+Keep this file in version control. It is project-wide truth, not a personal preference. If the project gitignores `.claude/`, use the carve-out `.claude/*` + `!.claude/config.md` (see the plugin README).
 
 ---
 

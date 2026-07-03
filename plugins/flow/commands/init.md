@@ -42,12 +42,23 @@ Substitute the answers into the template. Write to `$CLAUDE_PROJECT_DIR/.claude/
 
 Substitute project name (ask if needed; default to the basename of `$CLAUDE_PROJECT_DIR`) and the chosen commands into the CLAUDE.md template. Write to `$CLAUDE_PROJECT_DIR/CLAUDE.md`.
 
-## Step 6: Backend bootstrapping
+## Step 6: Gitignore carve-out
+
+Check whether the project's `.gitignore` ignores `.claude/` (a rule like `.claude`, `.claude/`, or `.claude/*` without a matching negation). If it does, `config.md` would never reach version control, so offer via `AskUserQuestion` to replace the rule with:
+
+```gitignore
+.claude/*
+!.claude/config.md
+```
+
+Explain briefly: `config.md` is project-wide truth and should be committed; the `.claude/*` form is required because git cannot re-include a file inside a directory ignored with a plain `.claude/` rule. If the user declines, just note that `config.md` will stay untracked.
+
+## Step 7: Backend bootstrapping
 
 - If `pm_backend=local`: create `$CLAUDE_PROJECT_DIR/issues/` with a `.gitkeep` and a `README.md` explaining the format (one markdown file per issue, frontmatter with `status`, `priority`, `created`).
 - If `pm_backend=github`: run `gh auth status` and warn if the user is not logged in.
 - If `pm_backend=linear`: tell the user to install/configure the Linear MCP server in their `.claude/settings.json`.
 
-## Step 7: Confirm
+## Step 8: Confirm
 
 Print a short summary: which files were written, what was skipped, and recommend `/flow:health` as the next command.
