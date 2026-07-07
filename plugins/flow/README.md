@@ -99,7 +99,7 @@ Note the `.claude/*` form — with a plain `.claude/` directory rule, git ignore
 
 All hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init`. The Stop hook keeps a `.stop_hook_active` recursion guard so a self-continuing session never loops.
 
-The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`.
+The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`. `/flow:push` ends a session through the same `finish` helper as `/flow:pause`: it writes the session's block to `session-log.md`, then deletes `session-progress.md` only when nothing is left in flight (open tasks keep the file, so the next session resumes them).
 
 ## Learn more
 

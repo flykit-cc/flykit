@@ -34,15 +34,40 @@ Read the issues worked in this session from `session-progress.md`. For each:
 
 If new top-level directories, new commands, or new conventions were introduced, update `$CLAUDE_PROJECT_DIR/CLAUDE.md` to reflect them. Ask the user to confirm changes.
 
-## Step 6: Final commit
+## Step 6: Settle session-progress.md
 
-Stage everything and commit with a clean message (not `wip:`). If there were prior `wip:` commits on this branch, ask the user whether to keep them or squash interactively (do not auto-squash).
+Do this **before** the final commit, not after. Check off the tasks completed this session, then:
 
-## Step 7: Solo vs team
+- **Everything shipped** (goal accomplished, no open tasks): clear the Goal, Paused at, and Next steps sections. The `finish` helper in Step 8 will then delete the file — a shipped session must not leave a stale resume file for `/flow:continue` to pick up.
+- **Open tasks remain**: keep Goal and the open tasks, refresh Next steps to reflect what shipping changed. The helper will keep the file, and the next session resumes from exactly this state.
 
-- **solo**: delete `session-progress.md`, `git push`, done.
-- **team**: keep `session-progress.md` as a PR artifact, `git push -u origin <branch>`, then ask via `AskUserQuestion` whether to open a PR. If yes, run `gh pr create --fill` (or prompt for title/body if the user prefers). Use `session-progress.md` content as the PR body draft.
+In **team** mode, also capture the file's current content now — it drafts the PR body in Step 9 and the file may be gone by then.
 
-## Step 8: Print summary
+## Step 7: Narrate the session (silent)
 
-Show the user: branch, commit SHA, issues closed, PR URL (if any).
+As in `/flow:pause`, write two files without printing them in chat:
+
+- `/tmp/flow-push-title` — one-line summary of what shipped (no em-dashes).
+- `/tmp/flow-push-body` — concrete bullets: what shipped, key decisions, anything deliberately left out or still open.
+
+This becomes the session's permanent block in `session-log.md`. A session that ends in `/flow:push` never runs `/flow:pause`, so this is its only narrative record — do not skip it.
+
+## Step 8: One-shot finish (shell)
+
+If there were prior `wip:` commits on this branch, first ask the user whether to keep them or squash interactively (do not auto-squash). Then:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh" finish /tmp/flow-push-title /tmp/flow-push-body "<clean commit message, not wip:>"
+```
+
+This is the same helper `/flow:pause` uses. In order it: prepends the session-log block, trims-or-deletes `session-progress.md`, stages changed files one by one (never `git add -A`) behind the staged-secrets guard, commits, pushes (falling back to `push -u origin <branch>` on a first push), and refreshes the pause marker. Do not replicate any of these steps by hand.
+
+If `finish` exits non-zero (staged secrets, push failure), surface the error verbatim and stop — don't retry.
+
+## Step 9: Team mode — open the PR
+
+Solo: done, go to Step 10. Team: ask via `AskUserQuestion` whether to open a PR. If yes, run `gh pr create` with the content captured in Step 6 as the body draft (or `--fill` if the user prefers).
+
+## Step 10: Print summary
+
+Show the user: branch, commit SHA, issues closed, whether `session-progress.md` was deleted or kept (the `trim:` line from `finish`), PR URL (if any).
