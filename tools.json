@@ -10,7 +10,7 @@
       "description": "Ghostty launcher for Claude Code — project picker, per-project tints, model/provider/mode switcher.",
       "repo": "https://github.com/flykit-cc/ghostcode",
       "npm": "@flykit/ghostcode",
-      "install": "npm install -g @flykit/ghostcode",
+      "install": "git clone https://github.com/flykit-cc/ghostcode && npm install -g ./ghostcode",
       "category": "workflow",
       "keywords": ["ghostty", "launcher", "picker"],
       "license": "MIT",

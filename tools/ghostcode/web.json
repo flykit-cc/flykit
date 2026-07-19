@@ -5,7 +5,7 @@
   "categories": ["Workflow", "Ghostty", "Launcher"],
   "tagline": "Swap models, tint your projects, and spin up pre-configured Claude Code terminals. Hit Enter twice. Work starts.",
   "description": "GhostCode is a Ghostty launcher for Claude Code. Fuzzy project picker, per-project color tints, provider/model/mode memory, all local, no telemetry.",
-  "install": "npm install -g @flykit/ghostcode",
+  "install": "git clone https://github.com/flykit-cc/ghostcode && npm install -g ./ghostcode",
   "externalRepo": "https://github.com/flykit-cc/ghostcode",
   "features": [
     "Fuzzy project picker with starred favorites and auto-tracked recents",
