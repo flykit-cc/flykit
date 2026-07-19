@@ -11,7 +11,7 @@
     "Fuzzy project picker with starred favorites and auto-tracked recents",
     "Per-project color tints that follow the project into CC's statusline",
     "Model, effort, mode, and provider — saved per-project and globally",
-    "Providers beyond Claude: Anthropic API, GLM, Kimi, Qwen",
+    "Providers beyond Claude: Anthropic API, GLM, Kimi, Qwen, DeepSeek, MiniMax, NVIDIA NIM",
     "First-run wizard installs dependencies and wires Ghostty config"
   ],
   "useCases": [
