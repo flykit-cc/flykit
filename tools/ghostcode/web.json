@@ -1,0 +1,27 @@
+{
+  "displayName": "GhostCode",
+  "author": "kaiomp",
+  "authorUrl": "https://github.com/kaiomp",
+  "categories": ["Workflow", "Ghostty", "Launcher"],
+  "tagline": "Swap models, tint your projects, and spin up pre-configured Claude Code terminals. Hit Enter twice. Work starts.",
+  "description": "GhostCode is a Ghostty launcher for Claude Code. Fuzzy project picker, per-project color tints, provider/model/mode memory, all local, no telemetry.",
+  "install": "npm install -g @flykit/ghostcode",
+  "externalRepo": "https://github.com/flykit-cc/ghostcode",
+  "features": [
+    "Fuzzy project picker with starred favorites and auto-tracked recents",
+    "Per-project color tints that follow the project into CC's statusline",
+    "Model, effort, mode, and provider — saved per-project and globally",
+    "Providers beyond Claude: Anthropic API, GLM, Kimi, Qwen",
+    "First-run wizard installs dependencies and wires Ghostty config"
+  ],
+  "useCases": [
+    "Heavy Claude Code users who want a project switcher on every new terminal",
+    "Devs juggling multiple AI providers across projects",
+    "Anyone who wants visual distinction between project contexts"
+  ],
+  "screenshots": [
+    { "label": "Dashboard", "file": "./screenshots/dashboard.png" },
+    { "label": "Project picker", "file": "./screenshots/project-picker.png" },
+    { "label": "Provider picker", "file": "./screenshots/provider-picker.png" }
+  ]
+}

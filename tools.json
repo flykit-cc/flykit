@@ -1,0 +1,21 @@
+{
+  "$schema": "https://flykit.cc/schemas/tools.json",
+  "name": "flykit-tools",
+  "description": "Companion tools for Claude Code",
+  "owner": { "name": "kaiomp" },
+  "tools": [
+    {
+      "name": "ghostcode",
+      "slug": "ghostcode",
+      "description": "Ghostty launcher for Claude Code — project picker, per-project tints, model/provider/mode switcher.",
+      "repo": "https://github.com/flykit-cc/ghostcode",
+      "npm": "@flykit/ghostcode",
+      "install": "npm install -g @flykit/ghostcode",
+      "category": "workflow",
+      "keywords": ["ghostty", "launcher", "picker"],
+      "license": "MIT",
+      "version": "0.2.0",
+      "web": "./tools/ghostcode/web.json"
+    }
+  ]
+}
