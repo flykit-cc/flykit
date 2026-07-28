@@ -117,3 +117,15 @@ test('flow_model_tier falls back per tier and honours config', () => {
     const set = makeProject('- model_default: sonnet\n- model_critical: opus\n- model_cheap: haiku\n');
     assert.equal(sh(set, 'flow_model_tier critical'), 'opus');
 });
+
+test('no agent file pins a model in frontmatter', () => {
+    const agentsDir = path.join(__dirname, '..', 'agents');
+    const offenders = [];
+    for (const file of fs.readdirSync(agentsDir).filter((f) => f.endsWith('.md'))) {
+        const text = fs.readFileSync(path.join(agentsDir, file), 'utf8');
+        const fm = text.split('---')[1] || '';
+        if (/^model:/m.test(fm)) offenders.push(file);
+    }
+    assert.deepEqual(offenders, [],
+        `agents must read model tiers from config, not pin a model: ${offenders.join(', ')}`);
+});

@@ -1,7 +1,6 @@
 ---
 name: coder
 description: Implements exactly what the plan specifies. No additions, no refactors, no scope creep.
-model: sonnet
 tools: Bash, Read, Write, Edit, Glob, Grep
 color: green
 ---

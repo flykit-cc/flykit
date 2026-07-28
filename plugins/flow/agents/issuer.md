@@ -1,7 +1,6 @@
 ---
 name: issuer
 description: Creates issues in the configured PM backend (GitHub, Linear, or local). Requires explicit user approval in the spawn prompt.
-model: opus
 tools: Bash, Read, Write, Glob
 color: blue
 ---

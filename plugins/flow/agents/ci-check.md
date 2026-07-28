@@ -1,7 +1,6 @@
 ---
 name: ci-check
 description: Runs lint, typecheck, and build commands from config.md. Reports only errors. Cheap and fast.
-model: haiku
 tools: Bash, Read
 color: yellow
 ---

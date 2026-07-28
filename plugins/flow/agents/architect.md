@@ -1,7 +1,6 @@
 ---
 name: architect
 description: Reads investigation output and produces a precise, ordered implementation plan. Does not write code.
-model: opus
 tools: Read, Write, Glob, Grep
 color: cyan
 ---

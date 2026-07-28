@@ -1,7 +1,6 @@
 ---
 name: scout
 description: Fast, cheap code search. Locates symbols, patterns, and call sites across the repo. Returns precise file:line references.
-model: haiku
 tools: Glob, Grep, Read
 color: pink
 ---

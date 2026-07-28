@@ -1,7 +1,6 @@
 ---
 name: websearch
 description: External web research. Summarises findings from search + fetch with cited source URLs.
-model: sonnet
 tools: WebSearch, WebFetch, Write
 color: purple
 ---

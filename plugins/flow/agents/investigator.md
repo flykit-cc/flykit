@@ -1,7 +1,6 @@
 ---
 name: investigator
 description: First-responder. Reads a problem statement, traces root cause, and produces a structured investigation report.
-model: sonnet
 tools: Bash, Read, Glob, Grep, Write
 color: orange
 ---
