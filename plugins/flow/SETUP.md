@@ -89,7 +89,30 @@ stop_check: lint+build
 
 With this set, `/flow:push` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:push` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:push` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
 
-## 6. Verify
+## 6. Approval for costly commands
+
+flow doesn't gate expensive or destructive commands itself — use Claude Code's native `permissions.ask` in `.claude/settings.local.json`. It prompts you before a matching command runs and remembers your answer (moves it into `permissions.allow`), so you're only asked once.
+
+```json
+{
+  "permissions": {
+    "ask": [
+      "Bash(fly deploy:*)",
+      "Bash(flyctl deploy:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(terraform apply:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(aws ec2 run-instances:*)",
+      "Bash(docker push:*)",
+      "Bash(electron-builder:*)"
+    ]
+  }
+}
+```
+
+These are commands that cost real money outside your Claude subscription — CI minutes, cloud builds, deploys, metered compute. Add your own project's expensive commands (e.g. a slow native build) to the list.
+
+## 7. Verify
 
 Run a quick health check:
 
@@ -107,7 +130,7 @@ It reports:
 ### Hooks aren't firing
 - Confirm the plugin is enabled: `/plugin list` should show `flow` as active.
 - Hooks live at `${CLAUDE_PLUGIN_ROOT}/hooks/`. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` is valid JSON.
-- `auto-lint`, `file-protection`, and `bash-guard` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.). Without it, `bash-guard` fails open — it will not block anything, including the irreversible-actions checks.
+- `auto-lint` and `file-protection` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.). Without it, the hook fails open — it will not block anything.
 - Check Claude Code's hook logs for any non-zero exits.
 
 ### `.claude/config.md` is missing

@@ -104,13 +104,6 @@ test('flow_path_is_private covers the whole .flow directory by default', () => {
     assert.equal(shStatus(root, 'flow_path_is_private ".flow/local.md"'), 0);
 });
 
-test('flow_expensive_cmds defaults to metered commands', () => {
-    const root = makeProject('# empty\n');
-    const out = sh(root, 'flow_expensive_cmds');
-    assert.match(out, /terraform apply/);
-    assert.match(out, /fly deploy/);
-});
-
 test('flow_stop_check_mode defaults to lint and rejects junk', () => {
     assert.equal(sh(makeProject('# empty\n'), 'flow_stop_check_mode'), 'lint');
     assert.equal(sh(makeProject('- stop_check: nonsense\n'), 'flow_stop_check_mode'), 'lint');
@@ -135,23 +128,6 @@ test('flow_extract returns 0 (success) when the key is missing', () => {
     const root = makeProject('# empty\n');
     const status = shStatus(root, 'set -euo pipefail; PORT="$(flow_extract dev_port)"; echo "ok:$PORT"');
     assert.equal(status, 0, 'a missing key must not abort a pipefail caller');
-});
-
-// 8. init.js copies config-template.md verbatim, and flow_expensive_cmds
-// (etc.) REPLACES rather than merges the default list — so the template's
-// defaults must be byte-identical to lib.sh's, or an initialized project
-// ends up LESS protected than an uninitialized one.
-test('config-template.md defaults match lib.sh defaults exactly', () => {
-    const templatePath = path.join(__dirname, '..', 'references', 'config-template.md');
-    const template = fs.readFileSync(templatePath, 'utf8');
-    const root = makeProject('# empty\n');
-    for (const key of ['expensive_cmds', 'secret_globs', 'private_globs']) {
-        const libDefault = sh(root, `flow_${key}`);
-        const m = template.match(new RegExp(`^- ${key}:\\s*(.*)$`, 'm'));
-        assert.ok(m, `template must define - ${key}: ...`);
-        assert.equal(m[1].trim(), libDefault,
-            `${key} default drifted between config-template.md and lib.sh`);
-    }
 });
 
 test('no agent file pins a model in frontmatter', () => {

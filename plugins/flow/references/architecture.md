@@ -24,7 +24,7 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
   .claude/state/last-pause           pause marker (HEAD/branch/timestamp)
   .claude/.stop-check.log            background lint/format output from the Stop hook
   .build-check                       one-shot build-gate marker, armed by /flow:push
-  .flow/                             one-shot bash-guard waivers (.allow-expensive, .allow-destructive) — machine-local, never commit
+  .flow/                             machine-local flow state — never commit
   issues/                            only when pm_backend = local
 ```
 

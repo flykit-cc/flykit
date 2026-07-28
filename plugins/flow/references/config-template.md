@@ -129,17 +129,6 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 
 ---
 
-## External cost protection
-
-> Optional. Comma-separated substrings naming commands that bill money OUTSIDE your
-> Claude subscription: CI minutes, cloud builds, deploys, metered backends, compute.
-> A match is blocked and must be explicitly approved. Token usage is deliberately not
-> covered — it is capped by your plan and stops on its own.
-
-- expensive_cmds: terraform apply,fly deploy,flyctl deploy,vercel deploy,gh workflow run,aws ec2 run-instances,electron-builder,docker push
-
----
-
 ## Model tiers
 
 > Optional. Which model each class of work runs on. Agents read these instead of

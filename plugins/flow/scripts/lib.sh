@@ -149,20 +149,6 @@ flow_private_regex() {
     printf '%s' "$out"
 }
 
-# Comma-separated substrings naming commands that cost real money OUTSIDE the
-# Claude subscription: CI minutes, cloud builds, deploys, metered backends,
-# compute. Token spend is deliberately not covered — it is self-limiting.
-# Config key: expensive_cmds.
-flow_expensive_cmds() {
-    local v
-    v="$(flow_extract expensive_cmds)"
-    if [ -n "$v" ]; then
-        printf '%s' "$v"
-    else
-        printf '%s' 'terraform apply,fly deploy,flyctl deploy,vercel deploy,gh workflow run,aws ec2 run-instances,electron-builder,docker push'
-    fi
-}
-
 # How much the Stop hook verifies. Config key: stop_check.
 # off        — never run anything on stop
 # lint       — background lint/format only (default)
