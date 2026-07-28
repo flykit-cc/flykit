@@ -23,7 +23,11 @@ else
 fi
 CACHE_FILE="/tmp/flow-hook-cache-${KEY}"
 
-BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+# In a repo with no commits, `rev-parse --abbrev-ref HEAD` prints "HEAD" *and*
+# exits non-zero, so a naive `|| echo "?"` appends a second line and the emitted
+# systemMessage becomes invalid JSON. Take the first line only.
+BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null | head -n1)
+[ -n "$BRANCH" ] && [ "$BRANCH" != "HEAD" ] || BRANCH="(no commits)"
 CHANGED=$(git -C "$PROJECT_DIR" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
 
 GOAL=""
