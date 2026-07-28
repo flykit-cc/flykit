@@ -10,6 +10,7 @@ Resume an interrupted session. Mechanics live in `${CLAUDE_PLUGIN_ROOT}/scripts/
 
 ```bash
 HELPERS="${CLAUDE_PLUGIN_ROOT}/scripts/continue-helpers.sh"
+HELPERS_PAUSE="${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh"
 "$HELPERS" check-progress     # exists | missing
 "$HELPERS" progress-age-days  # 0 if missing
 "$HELPERS" dev-server-state   # running:<pid> | port-taken:<cwd> | free | no-port

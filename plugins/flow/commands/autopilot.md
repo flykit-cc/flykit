@@ -70,7 +70,7 @@ Read the project's **Known Pitfalls** from `known_pitfalls_path`. Keep the full 
    - Spawn with **`mode: "auto"`** so agents auto-accept edits and never prompt.
 5. **Do NOT use `TeamCreate` / `TeamDelete` / `TaskCreate` / `TaskUpdate`.** They write to `~/.claude/` and reset `bypassPermissions` to `acceptEdits`. Use direct `Agent` spawns only.
 6. **Monitor and assist** (orchestrator does these directly — the only code the orchestrator writes is small cross-agent integration glue):
-   - The Stop hook lints/formats in the background; fix lint errors it surfaces without waiting for the agent to finish.
+   - Lint/format issues surface via Phase 2 step 8's explicit `lint_cmd`/`typecheck_cmd` run; fix errors it reports without waiting for the agent to finish.
    - Implementer reports `BLOCKED` → skip that issue, file a `blocked` ticket with the reason, move on.
    - Implementer reports `PLAN_MISMATCH` / needs context → resolve autonomously via `SendMessage`; if truly impossible, skip and file a ticket.
 7. **Shut down each agent the moment it finishes** — send `shutdown_request` via `SendMessage` (also written to `/tmp/flow-session/shutdown_request` per the protocol). Idle agents waste resources and clutter the terminal.
