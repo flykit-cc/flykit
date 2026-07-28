@@ -4,7 +4,8 @@
 #   * lint_cmd + format_cmd run in a BACKGROUNDED subshell, append to a rotated
 #     .stop-check.log, and never block (exit 0 immediately).
 #   * build_cmd + test_cmd run SYNCHRONOUSLY and CAN block, but ONLY when a
-#     .build-check marker exists. /flow:push arms that marker as a one-shot gate;
+#     .build-check marker exists. /flow:pause land arms that marker as a one-shot
+#     gate, and only when the project sets stop_check: lint+build;
 #     this hook consumes (removes) it so the gate fires exactly once.
 # Fails open: no config, no git, or jq missing => exit 0.
 
@@ -65,7 +66,7 @@ $(printf '%s\n' "$out" | grep -iE '(error|fail|✖)' | head -10)
         fi
     done
     if [ "$GATE_FAIL" -ne 0 ]; then
-        REASON="Build/test gate failed (armed by /flow:push):${GATE_OUT}"
+        REASON="Build/test gate failed (armed by /flow:pause land):${GATE_OUT}"
         if command -v jq >/dev/null 2>&1; then
             jq -n --arg msg "$REASON" '{"decision":"block","reason":$msg}'
         else
