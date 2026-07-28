@@ -1,5 +1,5 @@
 ---
-description: Pause cleanly — shut down agents, save state + memory, run drift-check, commit and (by default) push. "local" skips push; "land" runs CI checks, closes issues, ff-merges a feature branch onto the default branch, and is the only mode that ships.
+description: Pause cleanly — shut down agents, save state + memory, run drift-check, commit and (by default) push. "local" skips push; "land" runs CI checks, closes issues, and ships — ff-merging in solo mode, opening a PR in team mode.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, SendMessage
 ---
 # /flow:pause
@@ -10,9 +10,9 @@ Stop work cleanly so it can be resumed with `/flow:continue`. The mechanics live
 |---|---|
 | `/flow:pause` | save state + commit + push current branch |
 | `/flow:pause local` | save state + commit, **no push** |
-| `/flow:pause land` | save state + run CI checks + commit + push + close issues + rebase onto the default branch + ff-merge + delete branch |
+| `/flow:pause land` | save state + run CI checks + commit + push + close issues, then: **solo** — rebase onto the default branch, ff-merge, delete branch; **team** — open a PR |
 
-Flags are space-separated args. `local` and `land` are mutually exclusive (land implies push). `land` is the only mode that ships — it's where CI checks, issue closing, and the build-gate arming below apply.
+Flags are space-separated args. `local` and `land` are mutually exclusive (land implies push). `land` is the only mode that ships — it's where CI checks, issue closing, and the build-gate arming below apply. Whether it ff-merges or opens a PR depends on `workflow_mode` from `.claude/config.md`.
 
 ## Step 1: Load config
 
@@ -76,6 +76,8 @@ Do this **before** the final commit, not after. Check off the tasks completed th
 - **`land`, everything shipped** (goal accomplished, no open tasks): clear the Goal, Paused at, and Next steps sections. The `finish` helper in Step 9 will then delete the file — a landed session must not leave a stale resume file for `/flow:continue` to pick up.
 - **Open tasks remain, or this is plain `pause`/`pause local`**: keep Goal and the open tasks, refresh `Paused at` and `Next steps`. The helper will keep the file, and the next session resumes from exactly this state.
 
+**`land` + `workflow_mode: team`:** capture the file's current content now, before trimming — it drafts the PR body in Step 9.5, and the file may be gone by then.
+
 ## Step 9: One-shot finish (shell)
 
 If `land` and there were prior `wip:` commits on this branch, first ask the user whether to keep them or squash interactively (do not auto-squash).
@@ -84,10 +86,20 @@ If `land` and there were prior `wip:` commits on this branch, first ask the user
 "$HELPERS" finish /tmp/flow-pause-title /tmp/flow-pause-body "chore: <title>" $MODE_FLAG $CLOSE_ARG
 ```
 
-- `$MODE_FLAG`: `--no-push` for `local`, `--land` for `land`, empty otherwise.
+- `$MODE_FLAG`: `--no-push` for `local`; for `land`, `--land` when `workflow_mode: solo` (ff-merge onto the default branch), **empty** when `workflow_mode: team` (push the feature branch only — Step 9.5 opens a PR instead of merging); empty otherwise. Never pass `--land` in team mode: the helper's `--land` path always rebases and ff-merges onto the default branch unconditionally, which would bypass review.
 - `$CLOSE_ARG` (only with `land`, and only if this branch closes exactly one issue): `--close "<token>"` where `<token>` is the backend's close keyword you construct from `pm_backend` — e.g. `Closes #42` (github/local) or `Closes ENG-7` (linear). The script never guesses tracker prefixes; you supply the exact token. If the session touched more than one issue, leave `$CLOSE_ARG` empty and close all of them explicitly in Step 10 instead — the commit-message trailer only auto-closes one.
 
 If `finish` exits non-zero (staged secrets, push/land failure), surface the error verbatim and stop — don't retry.
+
+## Step 9.5: `land` + `workflow_mode: team` only — open the PR
+
+Solo mode already shipped via the ff-merge in Step 9 — skip this step entirely. In team mode, `finish` only pushed the feature branch; open the PR now:
+
+```bash
+gh pr create --title "<title>" --body "<PR body>" --fill-first
+```
+
+Draft the PR body from the `session-progress.md` content captured in Step 8 (Goal, what shipped, key decisions) plus the `/tmp/flow-pause-body` narration. For a non-github `pm_backend`, use the backend's equivalent (e.g. note in the report that Linear/local tracking has no PR concept and the branch was pushed for manual review). Print the PR URL in the final report.
 
 ## Step 10: `land` only — close issues
 
@@ -101,4 +113,4 @@ Skip this step for plain `pause`/`pause local` — only `land` ships and closes 
 
 ## Step 11: Report
 
-Parse the `commit:` / `push:` / `land:` / `trim:` lines from `finish` and print a tight report (Goal, Progress, Memory n written, Commit, Push, Land if set, Issues closed if `land`, Drift warnings if any, Next step). Include drift-check warnings verbatim if it flagged anything — informational, non-blocking.
+Parse the `commit:` / `push:` / `land:` / `trim:` lines from `finish` and print a tight report (Goal, Progress, Memory n written, Commit, Push, Land if set, PR URL if `land` + team mode, Issues closed if `land`, Drift warnings if any, Next step). Include drift-check warnings verbatim if it flagged anything — informational, non-blocking.

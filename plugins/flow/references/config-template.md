@@ -15,7 +15,7 @@ stage it. If you want it shared with collaborators, narrow `private_globs` (see 
 
 - workflow_mode: solo
 
-`solo` commits straight to the working branch and pushes on `/flow:push`. `team` creates a feature branch on `/flow:start` and opens a PR on `/flow:push`.
+`solo` commits straight to the working branch and pushes/ff-merges on `/flow:pause land`. `team` works on a feature branch (created when the session starts, e.g. by `/flow:continue`) and opens a PR on `/flow:pause land`.
 
 ---
 
@@ -145,7 +145,7 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 
 > Optional. How much the Stop hook runs when Claude finishes a turn.
 > `off` — nothing. `lint` — background lint/format only (default).
-> `lint+build` — also honour the one-shot build/test gate armed by `/flow:push`.
+> `lint+build` — also honour the one-shot build/test gate armed by `/flow:pause land`.
 > Builds and test suites cost time, disk, and sometimes money; keep this at `lint`
 > unless you want the heavier gate.
 

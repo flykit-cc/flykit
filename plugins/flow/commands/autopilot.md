@@ -57,7 +57,7 @@ Read the project's **Known Pitfalls** from `known_pitfalls_path`. Keep the full 
 ## Phase 2: Implementation
 
 1. **Claim issues**: github → `gh issue edit <n> --add-assignee @me`; linear → assign via MCP; local → add `status: in-progress` to the file.
-2. **team mode only**: create the sprint branch — `git checkout -b flow/sprint-<n>-<slug>`.
+2. **team mode only**: check out the default branch and pull, then cut the sprint branch from it — `git checkout <default> && git pull && git checkout -b flow/sprint-<n>-<slug>`. Branch from the default branch every sprint, not from the previous sprint's (possibly still-open-PR) branch — `/flow:pause land` doesn't merge in team mode, so the previous branch may not be in `<default>` yet.
 3. **Run the pipeline per issue group.** For each group, drive flow's normal chain via the `Agent` tool, handing off through `/tmp/flow-session/`:
    - **`Explore`** — map the relevant code, write findings to `/tmp/flow-session/investigation-<group>.md`
    - **`superpowers:writing-plans`** skill — turn the investigation into an ordered plan, write it to `/tmp/flow-session/plan-<group>.md`
@@ -82,7 +82,9 @@ Run **`/flow:deep-review`** over the sprint diff. Do NOT duplicate its logic her
 
 ## Phase 4: Push
 
-Delegate to **`/flow:pause land`** (it runs CI checks, arms the `.build-check` gate when `stop_check: lint+build`, closes issues, pushes, and — on a feature branch — rebases and ff-merges onto the default branch; on `solo` mode, already on the default branch, it just commits and pushes). If it reports an unfixable failure, fix it autonomously (or skip the offending change and file a ticket) — never ship broken code, never force-push, never `--no-verify`.
+Delegate to **`/flow:pause land`** (it runs CI checks, arms the `.build-check` gate when `stop_check: lint+build`, closes issues, and pushes; then in `solo` mode — already on the default branch — it's just a commit and push, while in `team` mode it opens a PR on the sprint branch Phase 2 created, without merging). If it reports an unfixable failure, fix it autonomously (or skip the offending change and file a ticket) — never ship broken code, never force-push, never `--no-verify`.
+
+**`team` mode:** the sprint branch stays open as a PR — Phase 5 loops back to Phase 1 without merging it. The next sprint's branch (Phase 2 step 2) is cut from the same point Phase 0 started from, not from the unmerged PR, so sprints stay independent and reviewable rather than stacking.
 
 ## Phase 5: Cleanup and loop
 

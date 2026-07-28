@@ -87,7 +87,7 @@ To also get a blocking `build_cmd` + `test_cmd` gate, set in `.claude/config.md`
 stop_check: lint+build
 ```
 
-With this set, `/flow:push` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:push` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:push` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
+With this set, `/flow:pause land` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:pause land` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:pause land` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
 
 ## 6. Approval for costly or destructive commands
 
@@ -116,7 +116,7 @@ flow doesn't gate these itself — use Claude Code's native `permissions.ask` in
 }
 ```
 
-Add your own project's expensive or destructive commands (e.g. a slow native build) to the list. Note: flow's own `/flow:pause` and `/flow:push` are unaffected either way — `pause-helpers.sh` stages files individually by name (never `git add -A`) and aborts if anything matching `private_globs` is staged, so private files reaching a remote was never this hook's job to prevent.
+Add your own project's expensive or destructive commands (e.g. a slow native build) to the list. Note: flow's own `/flow:pause` (all modes, including `land`) is unaffected either way — `pause-helpers.sh` stages files individually by name (never `git add -A`) and aborts if anything matching `private_globs` is staged, so private files reaching a remote was never this hook's job to prevent.
 
 ## 7. Verify
 
@@ -148,12 +148,12 @@ It reports:
 - Or temporarily comment out the `PostToolUse` block in `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`.
 
 ### `stop-check` is blocking me from finishing
-- `lint_cmd`/`format_cmd` run in the background and never block — if you're blocked, it's the build/test gate, which only runs when `stop_check: lint+build` and only right after `/flow:push` armed it.
+- `lint_cmd`/`format_cmd` run in the background and never block — if you're blocked, it's the build/test gate, which only runs when `stop_check: lint+build` and only right after `/flow:pause land` armed it.
 - Fix the `build_cmd`/`test_cmd` failures it reports — that's the point.
-- The gate is one-shot: it already consumed its marker, so simply stopping again won't re-trigger it. It only fires again after the next `/flow:push`.
+- The gate is one-shot: it already consumed its marker, so simply stopping again won't re-trigger it. It only fires again after the next `/flow:pause land`.
 - If a check is fundamentally wrong for your project, set the relevant `*_cmd` to blank in `.claude/config.md`, or drop `stop_check` back to `lint`.
 
-### `gh` / Linear errors from `issuer`
+### `gh` / Linear errors during issue filing or closing
 - `gh`: run `gh auth login` once. Confirm with `gh auth status`.
 - Linear: ensure the Linear MCP is configured at the user or project level.
 
