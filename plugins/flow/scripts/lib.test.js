@@ -64,6 +64,11 @@ test('flow_path_is_private accepts repo-relative paths', () => {
     assert.equal(shStatus(root, 'flow_path_is_private "src/index.ts"'), 1);
 });
 
+test('flow_path_is_private does not treat a glob as a substring match', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(shStatus(root, 'flow_path_is_private "my.claudex"'), 1);
+});
+
 test('flow_private_regex matches private paths under grep -E', () => {
     const root = makeProject('# empty\n');
     const re = sh(root, 'flow_private_regex');
@@ -71,6 +76,22 @@ test('flow_private_regex matches private paths under grep -E', () => {
         `printf '%s\\n' 'docs/superpowers/x.md' 'src/a.ts' | grep -cE ${JSON.stringify(re)} || true`],
         { encoding: 'utf8' }).trim();
     assert.equal(hit, '1');
+});
+
+test('flow_private_regex matches only whole path segments, not substrings', () => {
+    const root = makeProject('# empty\n');
+    const re = sh(root, 'flow_private_regex');
+    const lines = [
+        'docs/superpowers/plan.md',   // MUST match: nested inside the glob
+        '.claude/config.md',          // MUST match: glob at path start
+        'my.claudex',                 // MUST NOT match: substring of a longer segment
+        'src/.claudex/a.ts',          // MUST NOT match: same, mid-path
+        'notdocs/superpowers/a.md',   // MUST NOT match: glob is a suffix of a longer segment
+    ];
+    const matched = execFileSync('bash', ['-c',
+        `printf '%s\\n' ${lines.map(l => JSON.stringify(l)).join(' ')} | grep -E ${JSON.stringify(re)} || true`],
+        { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+    assert.deepEqual(matched.sort(), ['.claude/config.md', 'docs/superpowers/plan.md'].sort());
 });
 
 test('flow_expensive_cmds defaults to metered commands', () => {
