@@ -4,11 +4,20 @@
  *
  * Usage:
  *   node scripts/init.js [--target <dir>]
+ *     [--workflow-mode <solo|team>]
+ *     [--pm-backend <github|linear|local>]
+ *     [--pm-github-owner <owner>] [--pm-github-repo <repo>]
+ *     [--pm-linear-team <team>]
  *
  * Creates (idempotent — never overwrites):
  *   <target>/.claude/config.md     from references/config-template.md
  *   <target>/CLAUDE.md             from references/claude-md-template.md
  *   <target>/issues/               empty directory for local-backend issues
+ *
+ * Any of the flags above that are supplied get written into a freshly-created
+ * config.md alongside the auto-detected stack commands. Omitted flags keep the
+ * template's own default (workflow_mode/pm_backend) or come back blank
+ * (pm_github_owner/pm_github_repo/pm_linear_team) — never a `{PLACEHOLDER}`.
  *
  * Each step prints "created" or "already exists, skipping".
  */
@@ -19,12 +28,25 @@ const { pluginRoot } = require('./lib/bootstrap');
 const fs = require('fs');
 const path = require('path');
 
+const VALID_WORKFLOW_MODES = ['solo', 'team'];
+const VALID_PM_BACKENDS = ['github', 'linear', 'local'];
+
 function parseArgs(argv) {
     const args = { target: process.cwd() };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--target' || a === '-t') {
             args.target = path.resolve(argv[++i] || '.');
+        } else if (a === '--workflow-mode') {
+            args.workflowMode = argv[++i];
+        } else if (a === '--pm-backend') {
+            args.pmBackend = argv[++i];
+        } else if (a === '--pm-github-owner') {
+            args.pmGithubOwner = argv[++i];
+        } else if (a === '--pm-github-repo') {
+            args.pmGithubRepo = argv[++i];
+        } else if (a === '--pm-linear-team') {
+            args.pmLinearTeam = argv[++i];
         } else if (a === '--help' || a === '-h') {
             args.help = true;
         }
@@ -34,10 +56,17 @@ function parseArgs(argv) {
 
 function printHelp() {
     process.stdout.write(
-        'Usage: node scripts/init.js [--target <dir>]\n' +
+        'Usage: node scripts/init.js [--target <dir>] [--workflow-mode <solo|team>]\n' +
+        '         [--pm-backend <github|linear|local>] [--pm-github-owner <owner>]\n' +
+        '         [--pm-github-repo <repo>] [--pm-linear-team <team>]\n' +
         '\n' +
-        '  --target, -t   Project directory to initialise (default: cwd)\n' +
-        '  --help, -h     Show this help\n'
+        '  --target, -t         Project directory to initialise (default: cwd)\n' +
+        '  --workflow-mode      solo or team (default: template default, solo)\n' +
+        '  --pm-backend         github, linear, or local (default: template default, github)\n' +
+        '  --pm-github-owner    GitHub repo owner, required when pm-backend=github\n' +
+        '  --pm-github-repo     GitHub repo name, required when pm-backend=github\n' +
+        '  --pm-linear-team     Linear team key, required when pm-backend=linear\n' +
+        '  --help, -h           Show this help\n'
     );
 }
 
@@ -177,6 +206,33 @@ function applyStackCommands(text, detected) {
     return out;
 }
 
+/**
+ * Fill in the workflow/PM-backend fields of a freshly-copied config.md from
+ * CLI flags. `workflow_mode`/`pm_backend` keep the template's own default
+ * (`solo`/`github`) when not supplied; the backend-specific fields
+ * (`pm_github_owner`, `pm_github_repo`, `pm_linear_team`) come back blank
+ * rather than leaving their `{PLACEHOLDER}` behind.
+ */
+function applyPmFields(text, opts) {
+    let out = text;
+    if (opts.workflowMode) {
+        out = out.replace(/^- workflow_mode:.*$/m, `- workflow_mode: ${opts.workflowMode}`);
+    }
+    if (opts.pmBackend) {
+        out = out.replace(/^- pm_backend:.*$/m, `- pm_backend: ${opts.pmBackend}`);
+    }
+    const blankable = [
+        ['pm_github_owner', opts.pmGithubOwner],
+        ['pm_github_repo', opts.pmGithubRepo],
+        ['pm_linear_team', opts.pmLinearTeam],
+    ];
+    for (const [key, value] of blankable) {
+        const re = new RegExp(`^- ${key}:.*$`, 'm');
+        out = out.replace(re, `- ${key}:${value ? ' ' + value : ''}`);
+    }
+    return out;
+}
+
 function report(label, result) {
     // appendSection returns a plain 'created'|'appended'|'present' string;
     // copyIfMissing/ensureDir return a { created, path, missingSource? } object.
@@ -198,6 +254,15 @@ function main() {
     if (args.help) {
         printHelp();
         return 0;
+    }
+
+    if (args.workflowMode && !VALID_WORKFLOW_MODES.includes(args.workflowMode)) {
+        process.stderr.write(`[flow init] Invalid --workflow-mode: ${args.workflowMode} (expected one of: ${VALID_WORKFLOW_MODES.join(', ')})\n`);
+        return 1;
+    }
+    if (args.pmBackend && !VALID_PM_BACKENDS.includes(args.pmBackend)) {
+        process.stderr.write(`[flow init] Invalid --pm-backend: ${args.pmBackend} (expected one of: ${VALID_PM_BACKENDS.join(', ')})\n`);
+        return 1;
     }
 
     const target = args.target;
@@ -222,12 +287,24 @@ function main() {
     // hold the user's own edits, which copyIfMissing correctly left alone.
     if (configResult.created) {
         const detected = detectStackCommands(target);
-        const original = fs.readFileSync(configDest, 'utf8');
-        fs.writeFileSync(configDest, applyStackCommands(original, detected));
+        let text = fs.readFileSync(configDest, 'utf8');
+        text = applyStackCommands(text, detected);
+        text = applyPmFields(text, args);
+        fs.writeFileSync(configDest, text);
         for (const key of STACK_CMD_KEYS) {
             if (detected[key]) {
                 process.stdout.write(`  detected: ${key} = ${detected[key]}\n`);
             }
+        }
+        const pmFlags = [
+            ['workflow_mode', args.workflowMode],
+            ['pm_backend', args.pmBackend],
+            ['pm_github_owner', args.pmGithubOwner],
+            ['pm_github_repo', args.pmGithubRepo],
+            ['pm_linear_team', args.pmLinearTeam],
+        ];
+        for (const [key, value] of pmFlags) {
+            if (value) process.stdout.write(`  set: ${key} = ${value}\n`);
         }
     }
     // CLAUDE.md usually already exists, so append a marked section rather than
@@ -249,5 +326,6 @@ if (require.main === module) {
 
 module.exports = {
     main, parseArgs, copyIfMissing, ensureDir, appendSection,
-    detectStackCommands, applyStackCommands, pmPrefix,
+    detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
+    VALID_WORKFLOW_MODES, VALID_PM_BACKENDS,
 };

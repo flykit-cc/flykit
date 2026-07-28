@@ -8,7 +8,7 @@ const path = require('path');
 
 const {
     copyIfMissing, ensureDir, appendSection, parseArgs, main,
-    detectStackCommands, applyStackCommands, pmPrefix,
+    detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
 } = require('./init');
 
 function mkSandbox() {
@@ -17,9 +17,9 @@ function mkSandbox() {
 
 // Existing tests below drive init via `main()` directly (mutating process.argv);
 // runInit follows that same convention rather than shelling out to a subprocess.
-function runInit(target) {
+function runInit(target, extraArgs = []) {
     const origArgv = process.argv;
-    process.argv = ['node', 'init.js', '--target', target];
+    process.argv = ['node', 'init.js', '--target', target, ...extraArgs];
     try {
         return main();
     } finally {
@@ -403,4 +403,103 @@ test('main: end-to-end — re-running init does not touch an already-filled-in c
     runInit(target);
 
     assert.equal(fs.readFileSync(configDest, 'utf8'), 'USER EDITED CONFIG', 'existing user config must never be rewritten');
+});
+
+// --- CLI flags for workflow_mode / pm_backend (init.md drives init.js) ---
+
+test('applyPmFields: leaves workflow_mode/pm_backend at template default when not supplied', () => {
+    const template = [
+        '- workflow_mode: solo',
+        '- pm_backend: github',
+        '- pm_github_owner: {OWNER}',
+        '- pm_github_repo: {REPO}',
+        '- pm_linear_team: {TEAM_KEY}',
+    ].join('\n');
+
+    const out = applyPmFields(template, {});
+    assert.match(out, /^- workflow_mode: solo$/m);
+    assert.match(out, /^- pm_backend: github$/m);
+    assert.match(out, /^- pm_github_owner:$/m, 'blank, not left as {OWNER}');
+    assert.match(out, /^- pm_github_repo:$/m);
+    assert.match(out, /^- pm_linear_team:$/m);
+    assert.doesNotMatch(out, /\{/, 'no placeholder braces must survive');
+});
+
+test('applyPmFields: writes supplied values, never a placeholder brace', () => {
+    const template = [
+        '- workflow_mode: solo',
+        '- pm_backend: github',
+        '- pm_github_owner: {OWNER}',
+        '- pm_github_repo: {REPO}',
+        '- pm_linear_team: {TEAM_KEY}',
+    ].join('\n');
+
+    const out = applyPmFields(template, {
+        workflowMode: 'team',
+        pmBackend: 'linear',
+        pmGithubOwner: 'flykit-cc',
+        pmGithubRepo: 'flykit',
+        pmLinearTeam: 'ENG',
+    });
+    assert.match(out, /^- workflow_mode: team$/m);
+    assert.match(out, /^- pm_backend: linear$/m);
+    assert.match(out, /^- pm_github_owner: flykit-cc$/m);
+    assert.match(out, /^- pm_github_repo: flykit$/m);
+    assert.match(out, /^- pm_linear_team: ENG$/m);
+});
+
+test('main: --workflow-mode and --pm-backend land in a freshly-written config.md', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target, ['--workflow-mode', 'team', '--pm-backend', 'local']);
+
+    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    assert.match(configText, /^- workflow_mode: team$/m);
+    assert.match(configText, /^- pm_backend: local$/m);
+});
+
+test('main: --pm-github-owner/--pm-github-repo/--pm-linear-team land in config.md', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target, [
+        '--pm-backend', 'github',
+        '--pm-github-owner', 'flykit-cc',
+        '--pm-github-repo', 'flykit',
+    ]);
+
+    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    assert.match(configText, /^- pm_github_owner: flykit-cc$/m);
+    assert.match(configText, /^- pm_github_repo: flykit$/m);
+});
+
+test('main: omitted PM flags produce no {PLACEHOLDER} text', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target);
+
+    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    assert.doesNotMatch(configText, /\{OWNER\}|\{REPO\}|\{TEAM_KEY\}/, 'no unfilled PM placeholders must remain');
+});
+
+test('main: invalid --workflow-mode exits non-zero and writes nothing', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    const code = runInit(target, ['--workflow-mode', 'bogus']);
+    assert.notEqual(code, 0);
+    assert.equal(fs.existsSync(path.join(target, '.claude', 'config.md')), false, 'nothing should be written on validation failure');
+});
+
+test('main: invalid --pm-backend exits non-zero and writes nothing', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    const code = runInit(target, ['--pm-backend', 'jira']);
+    assert.notEqual(code, 0);
+    assert.equal(fs.existsSync(path.join(target, '.claude', 'config.md')), false, 'nothing should be written on validation failure');
+});
+
+test('main: re-running with new PM flags never touches an already-filled-in config.md', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target);
+
+    const configDest = path.join(target, '.claude', 'config.md');
+    fs.writeFileSync(configDest, 'USER EDITED CONFIG');
+
+    runInit(target, ['--workflow-mode', 'team', '--pm-backend', 'linear', '--pm-linear-team', 'ENG']);
+
+    assert.equal(fs.readFileSync(configDest, 'utf8'), 'USER EDITED CONFIG', 'existing user config must never be rewritten by PM flags either');
 });
