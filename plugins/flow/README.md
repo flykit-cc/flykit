@@ -93,7 +93,7 @@ If you deliberately want to share stack settings with collaborators, narrow `pri
 
 Most hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init` — `stop-check` exits immediately if the config file is absent. The Stop hook checks the `stop_hook_active` flag Claude Code passes in its input (not a file) as a recursion guard, so a self-continuing session never loops.
 
-Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly commands" in `SETUP.md`.
+Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly or destructive commands" in `SETUP.md`.
 
 The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`. `/flow:push` ends a session through the same `finish` helper as `/flow:pause`: it writes the session's block to `session-log.md`, then deletes `session-progress.md` only when nothing is left in flight (open tasks keep the file, so the next session resumes them).
 

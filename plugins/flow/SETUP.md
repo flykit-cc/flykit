@@ -89,9 +89,9 @@ stop_check: lint+build
 
 With this set, `/flow:push` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:push` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:push` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
 
-## 6. Approval for costly commands
+## 6. Approval for costly or destructive commands
 
-flow doesn't gate expensive or destructive commands itself — use Claude Code's native `permissions.ask` in `.claude/settings.local.json`. It prompts you before a matching command runs and remembers your answer (moves it into `permissions.allow`), so you're only asked once.
+flow doesn't gate these itself — use Claude Code's native `permissions.ask` in `.claude/settings.local.json`. It prompts you before a matching command runs and remembers your answer (moves it into `permissions.allow`), so you're only asked once. Two categories worth covering: commands that **cost money** outside your Claude subscription (CI minutes, cloud builds, deploys, metered compute), and commands that **destroy work irreversibly** (hard resets, force-cleans, blanket staging, recursive deletes).
 
 ```json
 {
@@ -104,13 +104,19 @@ flow doesn't gate expensive or destructive commands itself — use Claude Code's
       "Bash(gh workflow run:*)",
       "Bash(aws ec2 run-instances:*)",
       "Bash(docker push:*)",
-      "Bash(electron-builder:*)"
+      "Bash(electron-builder:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git checkout --force:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git add -A:*)",
+      "Bash(git add .:*)",
+      "Bash(rm -rf:*)"
     ]
   }
 }
 ```
 
-These are commands that cost real money outside your Claude subscription — CI minutes, cloud builds, deploys, metered compute. Add your own project's expensive commands (e.g. a slow native build) to the list.
+Add your own project's expensive or destructive commands (e.g. a slow native build) to the list. Note: flow's own `/flow:pause` and `/flow:push` are unaffected either way — `pause-helpers.sh` stages files individually by name (never `git add -A`) and aborts if anything matching `private_globs` is staged, so private files reaching a remote was never this hook's job to prevent.
 
 ## 7. Verify
 
