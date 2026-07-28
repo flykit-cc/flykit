@@ -30,6 +30,7 @@ This creates `.claude/config.md` (project-level config) and `CLAUDE.md` (project
 | `/flow:cleanup`      | Tidy stray branches, stale session files, and `/tmp/flow-session/`.     |
 | `/flow:health`       | Inspect the project's flow setup and report missing pieces.             |
 | `/flow:deep-review`  | Spawn the reviewer agent with extra rigor on the working diff.          |
+| `/flow:flawz`        | Pressure-test a plan/spec/design for real flaws before you act on it.   |
 | `/flow:autopilot`    | Autonomous multi-sprint loop: agent team, deep-review, push, repeat.    |
 
 ## Agents
@@ -88,12 +89,11 @@ If you deliberately want to share stack settings with collaborators, narrow `pri
 | `post-bash-reap`    | PostToolUse (Bash)         | Opt-in (`reap_orphans: true`): reaps orphan subprocesses after Bash.  |
 | `file-protection`   | PreToolUse (Write/Edit)    | Blocks writes to env files, lockfiles, `.git/`, and `secret_globs`.   |
 | `secret-guard`      | PreToolUse (Read/Bash)     | Blocks reading secret files via the Read tool or shell `cat`/`grep`.  |
-| `bash-guard`        | PreToolUse (Bash)          | Blocks commands that cost money outside your plan (`expensive_cmds`) or that are irreversible (blanket staging, `git reset --hard`, `rm -rf`, etc.), regardless of config. |
 | `stop-check`        | Stop                       | Background lint/format by default; synchronous build/test gate only when `/flow:push` armed `.build-check`. |
 
-Most hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init` — `stop-check` exits immediately if the config file is absent. `bash-guard` is the exception: it reads no config for its irreversible-actions checks, so it blocks matching commands (`git add -A`, `git reset --hard`, `rm -rf`, ...) even in a project with no `.claude/` directory at all. Its `expensive_cmds` list does come from config, falling back to a built-in default when config is missing. The Stop hook checks the `stop_hook_active` flag Claude Code passes in its input (not a file) as a recursion guard, so a self-continuing session never loops.
+Most hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init` — `stop-check` exits immediately if the config file is absent. The Stop hook checks the `stop_hook_active` flag Claude Code passes in its input (not a file) as a recursion guard, so a self-continuing session never loops.
 
-`bash-guard` blocks are one-shot escapable, not permanent: create `.flow/.allow-expensive` to let the next matching cost command through once, or `.flow/.allow-destructive` for the next matching irreversible command. Each marker is deleted the moment it is used, so a repeated command needs a fresh `touch` every time — that's deliberate, not a bug.
+Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly commands" in `SETUP.md`.
 
 The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`. `/flow:push` ends a session through the same `finish` helper as `/flow:pause`: it writes the session's block to `session-log.md`, then deletes `session-progress.md` only when nothing is left in flight (open tasks keep the file, so the next session resumes them).
 
