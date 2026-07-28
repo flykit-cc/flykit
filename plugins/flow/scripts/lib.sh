@@ -36,11 +36,18 @@ flow_extract() {
     local config
     config="$(flow_config_path)"
     [ -f "$config" ] || { printf ''; return 0; }
+    # The pipeline starts with `grep`, which exits 1 on no match. Under a
+    # caller's `set -o pipefail` (e.g. continue-helpers.sh's
+    # `PORT="$(flow_dev_port)"`) that would make a merely-unset key abort the
+    # whole script. `grep` finding nothing is not an error here — it's the
+    # normal "key absent" case, which callers handle by checking for an empty
+    # string — so this function always returns 0 itself.
     grep -E "^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:" "$config" 2>/dev/null \
         | tail -n1 \
         | sed -E "s/^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:[[:space:]]*//" \
         | sed -E 's/[[:space:]]*$//' \
         | sed -E 's/^["'\''`]//; s/["'\''`]$//'
+    return 0
 }
 
 # Space/newline-separated list of glob patterns that name secret files.
@@ -109,7 +116,12 @@ flow_private_globs() {
     if [ -n "$v" ]; then
         printf '%s' "$v"
     else
-        printf '%s' '.claude docs/superpowers .flow/local.md'
+        # The whole .flow directory, not just .flow/local.md — it also holds
+        # the one-shot arming markers (.allow-destructive, .allow-expensive).
+        # If only local.md were private, `finish`'s blanket-staging-free path
+        # would still stage a marker file, handing every clone/CI run of the
+        # project a standing bypass the moment it's committed once.
+        printf '%s' '.claude docs/superpowers .flow'
     fi
 }
 

@@ -94,6 +94,16 @@ test('flow_private_regex matches only whole path segments, not substrings', () =
     assert.deepEqual(matched.sort(), ['.claude/config.md', 'docs/superpowers/plan.md'].sort());
 });
 
+// 10. Arming markers (.flow/.allow-destructive, .flow/.allow-expensive) must
+// be private by default, so `finish` never stages a committed standing
+// bypass into the repo (previously only .flow/local.md was covered).
+test('flow_path_is_private covers the whole .flow directory by default', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(shStatus(root, 'flow_path_is_private ".flow/.allow-destructive"'), 0);
+    assert.equal(shStatus(root, 'flow_path_is_private ".flow/.allow-expensive"'), 0);
+    assert.equal(shStatus(root, 'flow_path_is_private ".flow/local.md"'), 0);
+});
+
 test('flow_expensive_cmds defaults to metered commands', () => {
     const root = makeProject('# empty\n');
     const out = sh(root, 'flow_expensive_cmds');
@@ -116,6 +126,32 @@ test('flow_model_tier falls back per tier and honours config', () => {
 
     const set = makeProject('- model_default: sonnet\n- model_critical: opus\n- model_cheap: haiku\n');
     assert.equal(sh(set, 'flow_model_tier critical'), 'opus');
+});
+
+// 9. flow_extract must not return non-zero for a missing key — under
+// `set -euo pipefail` (as continue-helpers.sh uses), a non-zero return from
+// a bare `VAR="$(flow_extract key)"` aborts the whole script.
+test('flow_extract returns 0 (success) when the key is missing', () => {
+    const root = makeProject('# empty\n');
+    const status = shStatus(root, 'set -euo pipefail; PORT="$(flow_extract dev_port)"; echo "ok:$PORT"');
+    assert.equal(status, 0, 'a missing key must not abort a pipefail caller');
+});
+
+// 8. init.js copies config-template.md verbatim, and flow_expensive_cmds
+// (etc.) REPLACES rather than merges the default list — so the template's
+// defaults must be byte-identical to lib.sh's, or an initialized project
+// ends up LESS protected than an uninitialized one.
+test('config-template.md defaults match lib.sh defaults exactly', () => {
+    const templatePath = path.join(__dirname, '..', 'references', 'config-template.md');
+    const template = fs.readFileSync(templatePath, 'utf8');
+    const root = makeProject('# empty\n');
+    for (const key of ['expensive_cmds', 'secret_globs', 'private_globs']) {
+        const libDefault = sh(root, `flow_${key}`);
+        const m = template.match(new RegExp(`^- ${key}:\\s*(.*)$`, 'm'));
+        assert.ok(m, `template must define - ${key}: ...`);
+        assert.equal(m[1].trim(), libDefault,
+            `${key} default drifted between config-template.md and lib.sh`);
+    }
 });
 
 test('no agent file pins a model in frontmatter', () => {

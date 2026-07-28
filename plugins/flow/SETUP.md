@@ -68,7 +68,7 @@ If you want the file to travel between your own machines, sync it outside git.
 If you deliberately want to share stack settings with collaborators, narrow the default:
 
 ```
-private_globs: .claude/settings.local.json docs/superpowers .flow/local.md
+private_globs: .claude/settings.local.json docs/superpowers .flow
 ```
 
 Then commit `.claude/config.md` yourself. flow will no longer block it.

@@ -251,3 +251,117 @@ test('fails open when jq is unavailable', () => {
     } catch (e) { status = e.status; }
     assert.equal(status, 0, 'must fail open, not block, when jq is missing');
 });
+
+// -- final-review fixes: each item below reproduces a bypass found on the
+// branch's final review, against an empty config (no arming markers).
+
+// 1. `.allow-expensive` must not waive rule set 2 (irreversible actions).
+test('allow-expensive does not waive the destructive-action gate', () => {
+    const root = makeProject('# empty\n');
+    fs.mkdirSync(path.join(root, '.flow'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.flow', '.allow-expensive'), '');
+
+    const r = runGuard(root, 'fly deploy && git add -A && rm -rf node_modules');
+    assert.equal(r.status, 2, 'the destructive part must still be blocked');
+    assert.equal(fs.existsSync(path.join(root, '.flow', '.allow-expensive')), false,
+        'the expensive marker is still consumed by the expensive match');
+});
+
+// 2. Git global options between `git` and the subcommand (this plugin's own
+// `git -C` house style) must not break the rule.
+test('blocks git add -A / reset --hard / checkout -f through a -C global option', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git -C . add -A').status, 2);
+    assert.equal(runGuard(root, 'git -C . reset --hard').status, 2);
+    assert.equal(runGuard(root, 'git -C . checkout -f main').status, 2);
+    assert.equal(runGuard(root, 'git -C . restore src/a.ts').status, 2);
+    assert.equal(runGuard(root, 'git -C . commit -a -m wip').status, 2);
+});
+
+// 2. `add`/`commit` must be scoped per-statement like rm/restore/reset, not
+// matched against the whole command with a trailing boundary that omits ;&|.
+test('blocks git add -A / git commit -a followed by another statement', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git add -A; npm test').status, 2);
+    assert.equal(runGuard(root, 'git add .&&npm test').status, 2);
+    assert.equal(runGuard(root, 'git commit -am "wip"; npm test').status, 2);
+});
+
+// 3. Backslash line continuation must not split a statement in two.
+test('blocks rm -rf split across a backslash line continuation', () => {
+    const root = makeProject('# empty\n');
+    const r = runGuard(root, 'rm -r \\\n-f build');
+    assert.equal(r.status, 2, 'a line-continued rm -r -f must still be caught as one statement');
+});
+
+// 4. Long options and path-qualified rm.
+test('blocks rm --recursive --force and long-option variants', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'rm --recursive --force build').status, 2);
+    assert.equal(runGuard(root, 'rm --recursive -f build').status, 2);
+    assert.equal(runGuard(root, 'rm -r --force build').status, 2);
+});
+
+test('blocks a path-qualified rm invocation', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, '/bin/rm -rf build').status, 2);
+});
+
+test('rm long-option fix does not regress allowed rm forms', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'rm file.txt').status, 0);
+    assert.equal(runGuard(root, 'rm -i old.txt').status, 0);
+});
+
+// 5. `git checkout -f` / `--force` and `git switch --discard-changes`.
+test('blocks git checkout -f / --force and git switch --discard-changes', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git checkout -f main').status, 2);
+    assert.equal(runGuard(root, 'git checkout --force -- .').status, 2);
+    assert.equal(runGuard(root, 'git switch --discard-changes').status, 2);
+});
+
+// 6. `git add`/`git commit` blanket flags must be cluster-matched and scanned
+// across all args, not only the first token.
+test('blocks git add long-option and clustered-flag forms in any position', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git add --update').status, 2);
+    assert.equal(runGuard(root, 'git add -Av').status, 2);
+    assert.equal(runGuard(root, 'git add -uv').status, 2);
+    assert.equal(runGuard(root, 'git add -v -A').status, 2);
+});
+
+test('blocks git commit -m msg -a (blanket flag not in first position)', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git commit -m msg -a').status, 2);
+});
+
+// 7. `git clean -fd` / `-fdx` sweeps up untracked (and ignored) files.
+test('blocks git clean with a force flag, allows dry-run/interactive', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git clean -fd').status, 2);
+    assert.equal(runGuard(root, 'git clean -fdx').status, 2);
+    assert.equal(runGuard(root, 'git clean -n').status, 0);
+    assert.equal(runGuard(root, 'git clean -i').status, 0);
+});
+
+// Re-verification: nothing that currently works should regress.
+test('re-verification: existing allow/block behavior is unchanged', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git add -A').status, 2);
+    assert.equal(runGuard(root, 'git add .').status, 2);
+    assert.equal(runGuard(root, 'git add .gitignore').status, 0);
+    assert.equal(runGuard(root, 'git add -- a.ts').status, 0);
+    assert.equal(runGuard(root, 'git reset --hard').status, 2);
+    assert.equal(runGuard(root, 'git reset --soft').status, 0);
+    assert.equal(runGuard(root, 'git reset --soft HEAD; echo --hard').status, 0);
+    assert.equal(runGuard(root, 'rm -rf x').status, 2);
+    assert.equal(runGuard(root, 'rm build/tmp.txt').status, 0);
+    assert.equal(runGuard(root, 'git restore --staged a.ts').status, 0);
+    assert.equal(runGuard(root, 'git restore a.ts').status, 2);
+    assert.equal(runGuard(root, 'git checkout main').status, 0);
+    assert.equal(runGuard(root, 'git checkout -b x').status, 0);
+    assert.equal(runGuard(root, 'fly deploy').status, 2);
+    assert.equal(runGuard(root, 'npm run dev').status, 0);
+    assert.equal(runGuard(root, 'npm run docker-push').status, 0);
+});

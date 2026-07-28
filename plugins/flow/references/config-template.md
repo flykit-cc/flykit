@@ -123,9 +123,9 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 > must never be staged or pushed, even though they live in the repo. Distinct from
 > `secret_globs` (credentials): these are work-in-progress artifacts — your own notes,
 > plans, and local Claude configuration.
-> Defaults to `.claude docs/superpowers .flow/local.md`.
+> Defaults to `.claude docs/superpowers .flow`.
 
-- private_globs: .claude docs/superpowers .flow/local.md
+- private_globs: .claude docs/superpowers .flow
 
 ---
 
@@ -136,7 +136,7 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 > A match is blocked and must be explicitly approved. Token usage is deliberately not
 > covered — it is capped by your plan and stops on its own.
 
-- expensive_cmds: terraform apply,fly deploy,vercel deploy,gh workflow run,aws ec2 run-instances,electron-builder,docker push
+- expensive_cmds: terraform apply,fly deploy,flyctl deploy,vercel deploy,gh workflow run,aws ec2 run-instances,electron-builder,docker push
 
 ---
 
