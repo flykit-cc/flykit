@@ -116,6 +116,53 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 
 ---
 
+## Private files
+
+> Optional. Space-separated globs naming paths that are private to your machine and
+> must never be staged or pushed, even though they live in the repo. Distinct from
+> `secret_globs` (credentials): these are work-in-progress artifacts — your own notes,
+> plans, and local Claude configuration.
+> Defaults to `.claude docs/superpowers .flow/local.md`.
+
+- private_globs: .claude docs/superpowers .flow/local.md
+
+---
+
+## External cost protection
+
+> Optional. Comma-separated substrings naming commands that bill money OUTSIDE your
+> Claude subscription: CI minutes, cloud builds, deploys, metered backends, compute.
+> A match is blocked and must be explicitly approved. Token usage is deliberately not
+> covered — it is capped by your plan and stops on its own.
+
+- expensive_cmds: terraform apply,fly deploy,vercel deploy,gh workflow run,aws ec2 run-instances,electron-builder,docker push
+
+---
+
+## Model tiers
+
+> Optional. Which model each class of work runs on. Agents read these instead of
+> pinning a model, so a weak model never lands on correctness-critical code.
+> `critical` covers security, auth, money paths, migrations, and fail-closed logic.
+
+- model_default:  sonnet
+- model_critical: opus
+- model_cheap:    haiku
+
+---
+
+## Stop-time verification
+
+> Optional. How much the Stop hook runs when Claude finishes a turn.
+> `off` — nothing. `lint` — background lint/format only (default).
+> `lint+build` — also honour the one-shot build/test gate armed by `/flow:push`.
+> Builds and test suites cost time, disk, and sometimes money; keep this at `lint`
+> unless you want the heavier gate.
+
+- stop_check: lint
+
+---
+
 ## Drift-check tuning
 
 > Optional. `/flow:pause`'s `drift-check` flags likely-missing doc updates. These
