@@ -36,11 +36,18 @@ flow_extract() {
     local config
     config="$(flow_config_path)"
     [ -f "$config" ] || { printf ''; return 0; }
+    # The pipeline starts with `grep`, which exits 1 on no match. Under a
+    # caller's `set -o pipefail` (e.g. continue-helpers.sh's
+    # `PORT="$(flow_dev_port)"`) that would make a merely-unset key abort the
+    # whole script. `grep` finding nothing is not an error here — it's the
+    # normal "key absent" case, which callers handle by checking for an empty
+    # string — so this function always returns 0 itself.
     grep -E "^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:" "$config" 2>/dev/null \
         | tail -n1 \
         | sed -E "s/^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:[[:space:]]*//" \
         | sed -E 's/[[:space:]]*$//' \
         | sed -E 's/^["'\''`]//; s/["'\''`]$//'
+    return 0
 }
 
 # Space/newline-separated list of glob patterns that name secret files.
@@ -96,6 +103,73 @@ flow_memory_path() {
     [ -z "$v" ] && { printf ''; return 0; }
     case "$v" in
         "~"|"~/"*) v="$HOME/${v#"~"/}";;
+    esac
+    printf '%s' "$v"
+}
+
+# Space-separated glob patterns naming paths that are private to this machine:
+# work-in-progress artifacts that must never be staged or pushed. Distinct from
+# secret_globs, which is about credentials. Config key: private_globs.
+flow_private_globs() {
+    local v
+    v="$(flow_extract private_globs)"
+    if [ -n "$v" ]; then
+        printf '%s' "$v"
+    else
+        # The whole .flow directory, not just .flow/local.md — it also holds
+        # the one-shot arming markers (.allow-destructive, .allow-expensive).
+        # If only local.md were private, `finish`'s blanket-staging-free path
+        # would still stage a marker file, handing every clone/CI run of the
+        # project a standing bypass the moment it's committed once.
+        printf '%s' '.claude docs/superpowers .flow'
+    fi
+}
+
+# Does a path fall inside a private glob? Accepts absolute or repo-relative
+# paths. Returns 0 (private) / 1 (not).
+flow_path_is_private() {
+    local path="$1" glob rel root
+    root="$(flow_project_root)"
+    rel="${path#"$root"/}"
+    for glob in $(flow_private_globs); do
+        # shellcheck disable=SC2254
+        case "$rel" in $glob|$glob/*) return 0;; esac
+    done
+    return 1
+}
+
+# ERE alternation matching any private glob, for grepping a list of paths.
+flow_private_regex() {
+    local glob out="" re
+    for glob in $(flow_private_globs); do
+        re="$(printf '%s' "$glob" | sed -E 's/[].[^$()+{}|\\]/\\&/g; s/\*/[^[:space:]]*/g')"
+        re="(^|/)${re}(/|$)"
+        if [ -z "$out" ]; then out="$re"; else out="$out|$re"; fi
+    done
+    printf '%s' "$out"
+}
+
+# How much the Stop hook verifies. Config key: stop_check.
+# off        — never run anything on stop
+# lint       — background lint/format only (default)
+# lint+build — also honour the one-shot .build-check build/test gate
+flow_stop_check_mode() {
+    local v
+    v="$(flow_extract stop_check)"
+    case "$v" in
+        off|lint|lint+build) printf '%s' "$v" ;;
+        *)                   printf 'lint' ;;
+    esac
+}
+
+# Model name for a tier: default | critical | cheap.
+# Never hardcode a model in an agent file — read the tier here instead.
+flow_model_tier() {
+    local tier="${1:-default}" v
+    case "$tier" in
+        critical) v="$(flow_extract model_critical)"; [ -z "$v" ] && v='opus' ;;
+        cheap)    v="$(flow_extract model_cheap)";    [ -z "$v" ] && v='haiku' ;;
+        *)        v="$(flow_extract model_default)";  [ -z "$v" ] && v='sonnet' ;;
     esac
     printf '%s' "$v"
 }

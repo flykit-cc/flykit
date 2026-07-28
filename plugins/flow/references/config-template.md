@@ -4,7 +4,8 @@ This file lives at `.claude/config.md` in your project. The `flow` plugin's comm
 
 It is intentionally markdown — easy to read, easy to edit by hand. Values go after the colon on each line. Comments start with `<!--` or `>` blockquotes and are ignored.
 
-Keep this file in version control. It is project-wide truth, not a personal preference. If the project gitignores `.claude/`, use the carve-out `.claude/*` + `!.claude/config.md` (see the plugin README).
+This file is **private by default** — `private_globs` includes `.claude`, so flow will not
+stage it. If you want it shared with collaborators, narrow `private_globs` (see SETUP.md).
 
 ---
 
@@ -14,7 +15,7 @@ Keep this file in version control. It is project-wide truth, not a personal pref
 
 - workflow_mode: solo
 
-`solo` commits straight to the working branch and pushes on `/flow:push`. `team` creates a feature branch on `/flow:start` and opens a PR on `/flow:push`.
+`solo` commits straight to the working branch and pushes/ff-merges on `/flow:pause land`. `team` works on a feature branch (created when the session starts, e.g. by `/flow:continue`) and opens a PR on `/flow:pause land`.
 
 ---
 
@@ -113,6 +114,42 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 > backgrounding a long-running process from inside a single tool call.
 
 - reap_orphans: false
+
+---
+
+## Private files
+
+> Optional. Space-separated globs naming paths that are private to your machine and
+> must never be staged or pushed, even though they live in the repo. Distinct from
+> `secret_globs` (credentials): these are work-in-progress artifacts — your own notes,
+> plans, and local Claude configuration.
+> Defaults to `.claude docs/superpowers .flow`.
+
+- private_globs: .claude docs/superpowers .flow
+
+---
+
+## Model tiers
+
+> Optional. Which model each class of work runs on. Agents read these instead of
+> pinning a model, so a weak model never lands on correctness-critical code.
+> `critical` covers security, auth, money paths, migrations, and fail-closed logic.
+
+- model_default:  sonnet
+- model_critical: opus
+- model_cheap:    haiku
+
+---
+
+## Stop-time verification
+
+> Optional. How much the Stop hook runs when Claude finishes a turn.
+> `off` — nothing. `lint` — background lint/format only (default).
+> `lint+build` — also honour the one-shot build/test gate armed by `/flow:pause land`.
+> Builds and test suites cost time, disk, and sometimes money; keep this at `lint`
+> unless you want the heavier gate.
+
+- stop_check: lint
 
 ---
 

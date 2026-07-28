@@ -20,7 +20,22 @@ Also read `$CLAUDE_PROJECT_DIR/.claude/config.md` and `$CLAUDE_PROJECT_DIR/CLAUD
 
 ## Step 2: Branch on progress state
 
-- **`missing`:** tell the user there is no saved session; suggest `/flow:start` or ask what to work on. Skip the rest.
+- **`missing`:** no saved session — this is a cold start. Ask the user what to work on (freeform; if `pm_backend` is configured and they'd rather pick from open issues, list them first via `gh issue list` / Linear MCP / `issues/` frontmatter, per `pm_backend`). If `workflow_mode: team` and you're still on the default branch, cut a feature branch now — `git checkout -b "$(echo "<goal-or-issue-title>" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')"` — so `/flow:pause land` has something to push and PR later; skip if already on a non-default branch. Once you have a goal, write `$CLAUDE_PROJECT_DIR/session-progress.md`:
+
+  ```markdown
+  # Session: <date>
+
+  ## Goal
+  <what the user described>
+
+  ## Tasks
+  - [ ] <first concrete step>
+
+  ## Phase
+  investigating
+  ```
+
+  Then continue straight into the work — do not stop to ask about mode or issue triage; those are decided inline as the session unfolds, not up front.
 - **`exists`:** read `session-progress.md` — note Goal, open Tasks, Paused at, Next steps. If `progress-age-days > 7`, also run `"$HELPERS" last-log-titles` and surface the last 3 session titles (headlines only; don't read the log body).
 
 ## Step 3: Restore agent handoff files
@@ -42,7 +57,7 @@ Based on `dev-server-state` (uses `dev_port` from config):
 
 ## Step 6: Summarise + pick where to start
 
-Print a tight recap (Goal, open tasks, Paused at, Next, dev URL, and last sessions if age > 7 days). If the next step is unambiguous, just start. If there are 2–4 plausible next moves, use `AskUserQuestion` with a recommendation. Spawn the appropriate agent for the chosen phase (same contract as `/flow:start`).
+Print a tight recap (Goal, open tasks, Paused at, Next, dev URL, and last sessions if age > 7 days). If the next step is unambiguous, just start. If there are 2–4 plausible next moves, use `AskUserQuestion` with a recommendation. Route the chosen phase through the appropriate agent: `Explore` to map code, `general-purpose` to implement, `reviewer` to check a diff — see `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
 
 ## Step 7: Note the resume
 

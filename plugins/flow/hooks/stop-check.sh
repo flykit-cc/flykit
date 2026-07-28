@@ -4,7 +4,8 @@
 #   * lint_cmd + format_cmd run in a BACKGROUNDED subshell, append to a rotated
 #     .stop-check.log, and never block (exit 0 immediately).
 #   * build_cmd + test_cmd run SYNCHRONOUSLY and CAN block, but ONLY when a
-#     .build-check marker exists. /flow:push arms that marker as a one-shot gate;
+#     .build-check marker exists. /flow:pause land arms that marker as a one-shot
+#     gate, and only when the project sets stop_check: lint+build;
 #     this hook consumes (removes) it so the gate fires exactly once.
 # Fails open: no config, no git, or jq missing => exit 0.
 
@@ -36,10 +37,21 @@ FORMAT_CMD="$(flow_extract format_cmd)"
 BUILD_CMD="$(flow_extract build_cmd)"
 TEST_CMD="$(flow_extract test_cmd)"
 
-# ---- Synchronous, blocking build/test gate (only when armed) --------------
 BUILD_FLAG="$PROJECT_DIR/.build-check"
+
+STOP_MODE="$(flow_stop_check_mode)"
+if [ "$STOP_MODE" = "off" ]; then
+    rm -f "$BUILD_FLAG"             # never leave a stale marker to fire later
+    exit 0
+fi
+
+# ---- Synchronous, blocking build/test gate (only when armed) --------------
+# Builds and test suites cost time, disk, and sometimes money, so the gate runs
+# only when the project opts in with `stop_check: lint+build`. The marker is
+# consumed either way, so a stale one never fires later.
 if [ -f "$BUILD_FLAG" ]; then
     rm -f "$BUILD_FLAG"            # one-shot: consume the marker
+    [ "$STOP_MODE" = "lint+build" ] || BUILD_CMD="" TEST_CMD=""
     GATE_OUT=""
     GATE_FAIL=0
     for pair in "build:$BUILD_CMD" "test:$TEST_CMD"; do
@@ -54,7 +66,7 @@ $(printf '%s\n' "$out" | grep -iE '(error|fail|✖)' | head -10)
         fi
     done
     if [ "$GATE_FAIL" -ne 0 ]; then
-        REASON="Build/test gate failed (armed by /flow:push):${GATE_OUT}"
+        REASON="Build/test gate failed (armed by /flow:pause land):${GATE_OUT}"
         if command -v jq >/dev/null 2>&1; then
             jq -n --arg msg "$REASON" '{"decision":"block","reason":$msg}'
         else

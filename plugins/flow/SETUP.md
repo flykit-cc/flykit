@@ -57,32 +57,68 @@ pm_linear_team: <TEAM_KEY>
 
 (Linear support requires the Linear MCP to be configured separately.)
 
-## 3. Commit `.claude/config.md`
+## 3. Keep `.claude/config.md` out of version control
 
-`config.md` is project-wide truth — commit it so collaborators and your other machines get the same stack setup. If your `.gitignore` ignores `.claude/`, switch to a carve-out:
+flow treats `.claude/` as **private by default** — see `private_globs` in your config. It
+is your personal setup, not project truth, and `/flow:pause` will refuse to stage anything
+matching `private_globs` so it cannot reach a remote by accident.
 
-```gitignore
-.claude/*
-!.claude/config.md
+If you want the file to travel between your own machines, sync it outside git.
+
+If you deliberately want to share stack settings with collaborators, narrow the default:
+
+```
+private_globs: .claude/settings.local.json docs/superpowers .flow
 ```
 
-(The `.claude/*` form matters: git cannot re-include a file inside a directory ignored with a plain `.claude/` rule.)
+Then commit `.claude/config.md` yourself. flow will no longer block it.
 
 ## 4. (Optional) Enable strict file protection
 
 `file-protection.sh` is on by default and blocks writes to env files, lockfiles, `.git/`, `node_modules/`, and `.claude/settings.local.json`. To customise, edit `${CLAUDE_PLUGIN_ROOT}/hooks/file-protection.sh` (or fork the plugin).
 
-## 5. (Optional) Enable build-on-stop
+## 5. (Optional) Enable the build/test gate on stop
 
-`stop-check.sh` runs lint + typecheck before Claude returns control. To also run `build_cmd` on stop, create an empty marker:
+By default (`stop_check: lint`), the Stop hook only runs `lint_cmd` + `format_cmd`, in the background, and never blocks — it just appends to `.claude/.stop-check.log`.
+
+To also get a blocking `build_cmd` + `test_cmd` gate, set in `.claude/config.md`:
 
 ```
-touch .build-check
+stop_check: lint+build
 ```
 
-Remove it to disable. This is opt-in because builds are slow.
+With this set, `/flow:pause land` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:pause land` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:pause land` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
 
-## 6. Verify
+## 6. Approval for costly or destructive commands
+
+flow doesn't gate these itself — use Claude Code's native `permissions.ask` in `.claude/settings.local.json`. It prompts you before a matching command runs and remembers your answer (moves it into `permissions.allow`), so you're only asked once. Two categories worth covering: commands that **cost money** outside your Claude subscription (CI minutes, cloud builds, deploys, metered compute), and commands that **destroy work irreversibly** (hard resets, force-cleans, blanket staging, recursive deletes).
+
+```json
+{
+  "permissions": {
+    "ask": [
+      "Bash(fly deploy:*)",
+      "Bash(flyctl deploy:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(terraform apply:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(aws ec2 run-instances:*)",
+      "Bash(docker push:*)",
+      "Bash(electron-builder:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git checkout --force:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git add -A:*)",
+      "Bash(git add .:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
+```
+
+Add your own project's expensive or destructive commands (e.g. a slow native build) to the list. Note: flow's own `/flow:pause` (all modes, including `land`) is unaffected either way — `pause-helpers.sh` stages files individually by name (never `git add -A`) and aborts if anything matching `private_globs` is staged, so private files reaching a remote was never this hook's job to prevent.
+
+## 7. Verify
 
 Run a quick health check:
 
@@ -100,7 +136,7 @@ It reports:
 ### Hooks aren't firing
 - Confirm the plugin is enabled: `/plugin list` should show `flow` as active.
 - Hooks live at `${CLAUDE_PLUGIN_ROOT}/hooks/`. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` is valid JSON.
-- `auto-lint` and `file-protection` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.).
+- `auto-lint` and `file-protection` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.). Without it, the hook fails open — it will not block anything.
 - Check Claude Code's hook logs for any non-zero exits.
 
 ### `.claude/config.md` is missing
@@ -112,11 +148,12 @@ It reports:
 - Or temporarily comment out the `PostToolUse` block in `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`.
 
 ### `stop-check` is blocking me from finishing
-- Fix the lint/typecheck errors it reports — that's the point.
-- For a one-off bypass: leave the session and return; the hook re-runs on the next stop only if files changed.
-- If a check is fundamentally wrong for your project, set the relevant `*_cmd` to blank in `.claude/config.md`.
+- `lint_cmd`/`format_cmd` run in the background and never block — if you're blocked, it's the build/test gate, which only runs when `stop_check: lint+build` and only right after `/flow:pause land` armed it.
+- Fix the `build_cmd`/`test_cmd` failures it reports — that's the point.
+- The gate is one-shot: it already consumed its marker, so simply stopping again won't re-trigger it. It only fires again after the next `/flow:pause land`.
+- If a check is fundamentally wrong for your project, set the relevant `*_cmd` to blank in `.claude/config.md`, or drop `stop_check` back to `lint`.
 
-### `gh` / Linear errors from `issuer`
+### `gh` / Linear errors during issue filing or closing
 - `gh`: run `gh auth login` once. Confirm with `gh auth status`.
 - Linear: ensure the Linear MCP is configured at the user or project level.
 

@@ -19,11 +19,12 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
 
 <your-project>/                      (your project's own state — all gitignore-worthy)
   CLAUDE.md                          project instructions (template-seeded, then grows)
-  session-progress.md                created by /flow:start; settled on /flow:push — deleted when everything shipped, kept while tasks remain
-  session-log.md                     dated session blocks, newest first (written by /flow:pause and /flow:push)
+  session-progress.md                created by /flow:continue (cold start); settled on /flow:pause land — deleted when everything shipped, kept while tasks remain
+  session-log.md                     dated session blocks, newest first (written by /flow:pause, all modes)
   .claude/state/last-pause           pause marker (HEAD/branch/timestamp)
   .claude/.stop-check.log            background lint/format output from the Stop hook
-  .build-check                       one-shot build-gate marker, armed by /flow:push
+  .build-check                       one-shot build-gate marker, armed by /flow:pause land
+  .flow/                             machine-local flow state — never commit
   issues/                            only when pm_backend = local
 ```
 
@@ -33,7 +34,7 @@ The state files above are machine-local working memory. Add them to `.gitignore`
 
 **Plugin owns:**
 
-- The set of commands (`/flow:init`, `/flow:start`, etc.)
+- The set of commands (`/flow:init`, `/flow:continue`, etc.)
 - The agent roster and how they hand off
 - The templates for `config.md` and `CLAUDE.md`
 - The handoff convention (`/tmp/flow-session/*.md`)

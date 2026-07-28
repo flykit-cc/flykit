@@ -10,9 +10,9 @@ Find problems that nobody opened a ticket for. This is proactive — run it mont
 
 Read `$CLAUDE_PROJECT_DIR/.claude/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`. Note the `pm_backend` and `known_pitfalls_path`.
 
-## Step 2: Spawn investigator
+## Step 2: Spawn Explore
 
-Spawn the `investigator` agent via the `Agent` tool. Brief it to scan for:
+Spawn the built-in `Explore` agent (breadth: "very thorough"). Brief it to scan for:
 
 - Code smells (god objects, deep nesting, duplicated logic)
 - Security holes (hardcoded secrets, unsafe deserialization, missing auth checks, SQL injection)
@@ -32,7 +32,7 @@ Show the user a table grouped by severity. Use `AskUserQuestion` to let them sel
 
 ## Step 5: File issues
 
-For each selected finding, spawn the `issuer` agent. It writes a clean issue body (title, context, evidence, suggested fix, acceptance criteria) and creates the issue on the configured `pm_backend`:
+For each selected finding, write a clean issue body yourself — title (imperative, under ~70 chars), context, evidence (`path:line`), suggested fix, acceptance criteria — then create it on the configured `pm_backend`. Search first and skip if a similar open issue already exists.
 
 - **github**: `gh issue create --title ... --body ... --label audit`
 - **linear**: use Linear MCP create-issue

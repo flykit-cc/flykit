@@ -61,7 +61,130 @@ function copyIfMissing(src, dest) {
     return { created: true, path: dest };
 }
 
+/**
+ * Add a marked section to `dest`, creating the file if absent.
+ *
+ * Idempotent: a file that already contains the marker is left untouched, so
+ * `init` can be re-run safely. Never rewrites content outside the markers —
+ * the user's own notes are theirs.
+ *
+ * @returns {'created'|'appended'|'present'}
+ */
+function appendSection(dest, marker, body) {
+    const begin = `<!-- ${marker}:begin -->`;
+    const end = `<!-- ${marker}:end -->`;
+    const block = `${begin}\n${body.trim()}\n${end}\n`;
+
+    if (!fs.existsSync(dest)) {
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, block);
+        return 'created';
+    }
+
+    const current = fs.readFileSync(dest, 'utf8');
+    if (current.includes(begin)) return 'present';
+
+    const sep = current.endsWith('\n') ? '\n' : '\n\n';
+    fs.appendFileSync(dest, `${sep}${block}`);
+    return 'appended';
+}
+
+const STACK_CMD_KEYS = ['dev_cmd', 'lint_cmd', 'typecheck_cmd', 'build_cmd', 'test_cmd', 'format_cmd'];
+
+/**
+ * Package-manager prefix for `npm run <script>`-style commands, chosen from
+ * whichever lockfile is present. `npm run` is the fallback (no lockfile, or
+ * a plain package-lock.json project).
+ */
+function pmPrefix(target) {
+    if (fs.existsSync(path.join(target, 'pnpm-lock.yaml'))) return 'pnpm';
+    if (fs.existsSync(path.join(target, 'yarn.lock'))) return 'yarn';
+    if (fs.existsSync(path.join(target, 'bun.lockb'))) return 'bun';
+    return 'npm run';
+}
+
+/**
+ * Detect this project's stack commands by reading its manifest/config files.
+ * Never invents a command that isn't evidenced by a file on disk — any key
+ * that can't be detected comes back as an empty string, not a placeholder.
+ */
+function detectStackCommands(target) {
+    const detected = {};
+    for (const key of STACK_CMD_KEYS) detected[key] = '';
+
+    const pkgPath = path.join(target, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const scripts = pkg.scripts || {};
+            const prefix = pmPrefix(target);
+            const scriptToKey = {
+                dev: 'dev_cmd',
+                lint: 'lint_cmd',
+                typecheck: 'typecheck_cmd',
+                'type-check': 'typecheck_cmd',
+                build: 'build_cmd',
+                test: 'test_cmd',
+                format: 'format_cmd',
+            };
+            for (const [script, key] of Object.entries(scriptToKey)) {
+                if (scripts[script] && !detected[key]) {
+                    detected[key] = `${prefix} ${script}`;
+                }
+            }
+        } catch (e) {
+            // Malformed package.json — skip Node detection, fall through to others.
+        }
+    }
+
+    let pyproject = '';
+    if (fs.existsSync(path.join(target, 'pyproject.toml'))) {
+        pyproject = fs.readFileSync(path.join(target, 'pyproject.toml'), 'utf8');
+    }
+    if (!detected.lint_cmd && (fs.existsSync(path.join(target, 'ruff.toml')) || /\[tool\.ruff\]/.test(pyproject))) {
+        detected.lint_cmd = 'ruff check .';
+    }
+    if (!detected.test_cmd && (fs.existsSync(path.join(target, 'pytest.ini')) || /\[tool\.pytest/.test(pyproject))) {
+        detected.test_cmd = 'pytest';
+    }
+
+    if (fs.existsSync(path.join(target, 'go.mod'))) {
+        if (!detected.lint_cmd) detected.lint_cmd = 'go vet ./...';
+        if (!detected.test_cmd) detected.test_cmd = 'go test ./...';
+        if (!detected.build_cmd) detected.build_cmd = 'go build ./...';
+    }
+
+    if (fs.existsSync(path.join(target, 'Cargo.toml'))) {
+        if (!detected.lint_cmd) detected.lint_cmd = 'cargo clippy';
+        if (!detected.test_cmd) detected.test_cmd = 'cargo test';
+        if (!detected.build_cmd) detected.build_cmd = 'cargo build --release';
+    }
+
+    return detected;
+}
+
+/**
+ * Replace each `- <key>: {PLACEHOLDER}` line in a freshly-copied config.md
+ * with the detected command, or a bare `- <key>:` when nothing was detected.
+ */
+function applyStackCommands(text, detected) {
+    let out = text;
+    for (const key of STACK_CMD_KEYS) {
+        const value = detected[key] || '';
+        const re = new RegExp(`^- ${key}:.*$`, 'm');
+        out = out.replace(re, `- ${key}:${value ? ' ' + value : ''}`);
+    }
+    return out;
+}
+
 function report(label, result) {
+    // appendSection returns a plain 'created'|'appended'|'present' string;
+    // copyIfMissing/ensureDir return a { created, path, missingSource? } object.
+    if (typeof result === 'string') {
+        const symbol = result === 'present' ? '·' : '+';
+        process.stdout.write(`  ${symbol} ${label}: ${result}\n`);
+        return;
+    }
     if (result.missingSource) {
         process.stdout.write(`  ! ${label}: source template missing (${result.path})\n`);
         return;
@@ -93,8 +216,27 @@ function main() {
     const claudeDest = path.join(target, 'CLAUDE.md');
     const issuesDir = path.join(target, 'issues');
 
-    report('.claude/config.md', copyIfMissing(configSrc, configDest));
-    report('CLAUDE.md', copyIfMissing(claudeSrc, claudeDest));
+    const configResult = copyIfMissing(configSrc, configDest);
+    report('.claude/config.md', configResult);
+    // Only fill in a freshly-created config.md — an existing one may already
+    // hold the user's own edits, which copyIfMissing correctly left alone.
+    if (configResult.created) {
+        const detected = detectStackCommands(target);
+        const original = fs.readFileSync(configDest, 'utf8');
+        fs.writeFileSync(configDest, applyStackCommands(original, detected));
+        for (const key of STACK_CMD_KEYS) {
+            if (detected[key]) {
+                process.stdout.write(`  detected: ${key} = ${detected[key]}\n`);
+            }
+        }
+    }
+    // CLAUDE.md usually already exists, so append a marked section rather than
+    // skipping — otherwise an existing project never receives flow's conventions.
+    if (fs.existsSync(claudeSrc)) {
+        report('CLAUDE.md', appendSection(claudeDest, 'flow', fs.readFileSync(claudeSrc, 'utf8')));
+    } else {
+        report('CLAUDE.md', { created: false, path: claudeSrc, missingSource: true });
+    }
     report('issues/', ensureDir(issuesDir));
 
     process.stdout.write('\n[flow init] Done. Next: edit .claude/config.md to fill in your project commands.\n');
@@ -105,4 +247,7 @@ if (require.main === module) {
     process.exit(main());
 }
 
-module.exports = { main, parseArgs, copyIfMissing, ensureDir };
+module.exports = {
+    main, parseArgs, copyIfMissing, ensureDir, appendSection,
+    detectStackCommands, applyStackCommands, pmPrefix,
+};
