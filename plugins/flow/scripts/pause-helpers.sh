@@ -28,6 +28,7 @@ PROGRESS="$REPO_ROOT/session-progress.md"
 LOG="$REPO_ROOT/session-log.md"
 
 SECRET_RE="$(flow_secret_regex)"
+PRIVATE_RE="$(flow_private_regex)"
 
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 
@@ -222,14 +223,29 @@ case "$cmd" in
     "$0" log-block "$TITLE_FILE" "$BODY_FILE" >/dev/null
     TRIM_RESULT=$("$0" trim-or-delete-progress)
 
-    # Stage uncommitted files individually (never `git add -A`).
+    # Stage uncommitted files individually (never `git add -A`), skipping paths
+    # the project marks private. Private paths are work-in-progress artifacts
+    # that live in the repo but must never reach a remote.
     while IFS= read -r f; do
-      [ -n "$f" ] && git -C "$REPO_ROOT" add -- "$f"
+      [ -n "$f" ] || continue
+      if flow_path_is_private "$f"; then
+        echo "skipped (private): $f" >&2
+        continue
+      fi
+      git -C "$REPO_ROOT" add -- "$f"
     done < <( { git -C "$REPO_ROOT" diff --name-only HEAD; git -C "$REPO_ROOT" ls-files --others --exclude-standard; } 2>/dev/null )
 
     # Sensitive-file guard.
     if [ -n "$SECRET_RE" ] && git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -qE "$SECRET_RE"; then
       echo "FINISH ABORTED: staged secrets detected. Run \`git reset\` and check .gitignore." >&2
+      exit 2
+    fi
+
+    # Private-file guard. Catches anything staged before finish ran — the exact
+    # path by which .claude/ and docs/superpowers/ once reached a public remote.
+    if [ -n "$PRIVATE_RE" ] && git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -qE "$PRIVATE_RE"; then
+      echo "FINISH ABORTED: private paths are staged. Run \`git reset\` — these must never be pushed." >&2
+      git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -E "$PRIVATE_RE" | sed 's/^/  /' >&2
       exit 2
     fi
 
