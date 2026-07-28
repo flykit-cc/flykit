@@ -77,15 +77,17 @@ Then commit `.claude/config.md` yourself. flow will no longer block it.
 
 `file-protection.sh` is on by default and blocks writes to env files, lockfiles, `.git/`, `node_modules/`, and `.claude/settings.local.json`. To customise, edit `${CLAUDE_PLUGIN_ROOT}/hooks/file-protection.sh` (or fork the plugin).
 
-## 5. (Optional) Enable build-on-stop
+## 5. (Optional) Enable the build/test gate on stop
 
-`stop-check.sh` runs lint + typecheck before Claude returns control. To also run `build_cmd` on stop, create an empty marker:
+By default (`stop_check: lint`), the Stop hook only runs `lint_cmd` + `format_cmd`, in the background, and never blocks — it just appends to `.claude/.stop-check.log`.
+
+To also get a blocking `build_cmd` + `test_cmd` gate, set in `.claude/config.md`:
 
 ```
-touch .build-check
+stop_check: lint+build
 ```
 
-Remove it to disable. This is opt-in because builds are slow.
+With this set, `/flow:push` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:push` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:push` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
 
 ## 6. Verify
 
@@ -105,7 +107,7 @@ It reports:
 ### Hooks aren't firing
 - Confirm the plugin is enabled: `/plugin list` should show `flow` as active.
 - Hooks live at `${CLAUDE_PLUGIN_ROOT}/hooks/`. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` is valid JSON.
-- `auto-lint` and `file-protection` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.).
+- `auto-lint`, `file-protection`, and `bash-guard` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.). Without it, `bash-guard` fails open — it will not block anything, including the irreversible-actions checks.
 - Check Claude Code's hook logs for any non-zero exits.
 
 ### `.claude/config.md` is missing
@@ -117,9 +119,10 @@ It reports:
 - Or temporarily comment out the `PostToolUse` block in `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`.
 
 ### `stop-check` is blocking me from finishing
-- Fix the lint/typecheck errors it reports — that's the point.
-- For a one-off bypass: leave the session and return; the hook re-runs on the next stop only if files changed.
-- If a check is fundamentally wrong for your project, set the relevant `*_cmd` to blank in `.claude/config.md`.
+- `lint_cmd`/`format_cmd` run in the background and never block — if you're blocked, it's the build/test gate, which only runs when `stop_check: lint+build` and only right after `/flow:push` armed it.
+- Fix the `build_cmd`/`test_cmd` failures it reports — that's the point.
+- The gate is one-shot: it already consumed its marker, so simply stopping again won't re-trigger it. It only fires again after the next `/flow:push`.
+- If a check is fundamentally wrong for your project, set the relevant `*_cmd` to blank in `.claude/config.md`, or drop `stop_check` back to `lint`.
 
 ### `gh` / Linear errors from `issuer`
 - `gh`: run `gh auth login` once. Confirm with `gh auth status`.
