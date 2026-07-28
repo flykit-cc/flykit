@@ -11,8 +11,8 @@ const HOOK = path.join(__dirname, 'auto-lint.sh');
 
 function makeRepo(configBody) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-autolint-'));
-    fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.claude', 'config.md'), configBody);
+    fs.mkdirSync(path.join(root, '.flow'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.flow', 'config.md'), configBody);
     return root;
 }
 
@@ -59,7 +59,7 @@ function fakeCmdOnPath(root, name) {
 test('lint_cmd: eslint runs with the file path appended', () => {
     const root = makeRepo('- lint_cmd: eslint\n');
     const bin = fakeCmd(root, 'eslint');
-    fs.writeFileSync(path.join(root, '.claude', 'config.md'), `- lint_cmd: ${bin}\n`);
+    fs.writeFileSync(path.join(root, '.flow', 'config.md'), `- lint_cmd: ${bin}\n`);
     const target = path.join(root, 'f.js');
     fs.writeFileSync(target, '// hi\n');
 
@@ -114,7 +114,7 @@ test('lint_cmd: ./node_modules/.bin/eslint runs with the file path (path prefix 
     );
     fs.chmodSync(bin, 0o755);
     fs.writeFileSync(
-        path.join(root, '.claude', 'config.md'),
+        path.join(root, '.flow', 'config.md'),
         '- lint_cmd: ./node_modules/.bin/eslint\n'
     );
     const target = path.join(root, 'f.js');

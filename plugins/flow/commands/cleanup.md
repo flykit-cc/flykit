@@ -8,7 +8,7 @@ Mechanical cleanup. No agents, no decisions — just run the configured tools.
 
 ## Step 1: Load config
 
-Read `$CLAUDE_PROJECT_DIR/.claude/config.md`. Capture `format_cmd` and `lint_cmd`. If either is empty, skip that step.
+Read `$CLAUDE_PROJECT_DIR/.flow/config.md`. Capture `format_cmd` and `lint_cmd`. If either is empty, skip that step.
 
 ## Step 2: Run formatter
 

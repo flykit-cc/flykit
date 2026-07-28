@@ -12,7 +12,7 @@ Run each check and collect the result. Print a table at the end.
 
 ### 1. Config file
 
-- Does `$CLAUDE_PROJECT_DIR/.claude/config.md` exist?
+- Does `$CLAUDE_PROJECT_DIR/.flow/config.md` exist?
 - Does it parse? (frontmatter or key:value lines as defined in the template)
 - Are required fields present: `workflow_mode`, `pm_backend`, `dev_cmd`, `lint_cmd`, `build_cmd`, `test_cmd`?
 

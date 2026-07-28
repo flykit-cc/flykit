@@ -47,7 +47,7 @@ Commands push their *mechanics* into shell helpers under `${CLAUDE_PLUGIN_ROOT}/
 
 - `pause-helpers.sh` — `changed-files`, `diff-since-pause`, `write-marker`/`read-marker`, `log-block`, `trim-or-delete-progress`, `drift-check`, `save-memory`, `finish`. Used by `/flow:pause` (all modes, including `land`).
 - `continue-helpers.sh` — `check-progress`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
-- `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.claude/config.md` (`flow_extract`, `flow_secret_globs`, `flow_dev_port`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
+- `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.flow/config.md` (`flow_extract`, `flow_secret_globs`, `flow_dev_port`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
 
 These helpers also touch a few machine-local state files (all under the project, all gitignore-worthy): `session-log.md` (append-only dated blocks) and `.claude/state/last-pause` (the pause marker).
 

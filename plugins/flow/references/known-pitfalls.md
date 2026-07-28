@@ -6,7 +6,7 @@ A "known pitfall" is a mistake this codebase has made before. Listing them in on
 
 Reviews catch new bugs. Known pitfalls catch the *same* bug a second time. Without a list, the same class of mistake gets re-introduced every few months by whichever contributor (human or AI) didn't see the original.
 
-The list lives in your project, not in this plugin. Default location: `CLAUDE.md` under a `## Known Pitfalls` section. Override via `known_pitfalls_path` in `.claude/config.md`.
+The list lives in your project, not in this plugin. Default location: `CLAUDE.md` under a `## Known Pitfalls` section. Override via `known_pitfalls_path` in `.flow/config.md`.
 
 ## How to grow the list
 

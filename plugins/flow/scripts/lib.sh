@@ -2,7 +2,7 @@
 # lib.sh — shared, sourced helpers for the flow plugin's scripts and hooks.
 #
 # Everything here is config-driven: values come from the *project's*
-# .claude/config.md, never hardcoded to a stack. Source this from a script:
+# .flow/config.md, never hardcoded to a stack. Source this from a script:
 #
 #   SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #   . "$SOURCE_DIR/lib.sh"          # from scripts/
@@ -25,7 +25,7 @@ flow_project_root() {
 
 # Absolute path to the project's config.md (may not exist).
 flow_config_path() {
-    printf '%s/.claude/config.md' "$(flow_project_root)"
+    printf '%s/.flow/config.md' "$(flow_project_root)"
 }
 
 # Extract a `key: value` (or `- key: value`) from config.md. Strips surrounding
@@ -130,7 +130,7 @@ flow_private_globs() {
         # If only local.md were private, `finish`'s blanket-staging-free path
         # would still stage a marker file, handing every clone/CI run of the
         # project a standing bypass the moment it's committed once.
-        printf '%s' '.claude docs/superpowers .flow'
+        printf '%s' '.claude docs/superpowers .flow/local.md'
     fi
 }
 

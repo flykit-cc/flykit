@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pause-helpers.sh — deterministic shell work for /flow:pause.
 # Each subcommand prints its result to stdout; the LLM only narrates.
-# Stack-agnostic: anything stack-specific is read from .claude/config.md.
+# Stack-agnostic: anything stack-specific is read from .flow/config.md.
 #
 # Usage:
 #   pause-helpers.sh changed-files                 # uncommitted paths (one per line)
@@ -14,7 +14,7 @@
 #   pause-helpers.sh drift-check                   # heuristic doc-drift warnings (non-blocking)
 #   pause-helpers.sh save-memory <index> <file>... # append memory files + refresh index
 #   pause-helpers.sh verification-mode               # ask | always | never (from config, default ask)
-#   pause-helpers.sh set-verification-mode <ask|always|never>  # persist the choice into .claude/config.md
+#   pause-helpers.sh set-verification-mode <ask|always|never>  # persist the choice into .flow/config.md
 #   pause-helpers.sh run-verification               # run build_cmd + test_cmd, report pass/fail
 #   pause-helpers.sh finish <title-file> <body-file> <commit-msg> [--no-push|--land] [--close <token>]
 
@@ -208,7 +208,7 @@ case "$cmd" in
       ask|always|never) ;;
       *) echo "set-verification-mode needs one of: ask|always|never" >&2; exit 1 ;;
     esac
-    CONFIG="$REPO_ROOT/.claude/config.md"
+    CONFIG="$(flow_config_path)"
     mkdir -p "$(dirname "$CONFIG")" 2>/dev/null || true
     [ -f "$CONFIG" ] || : > "$CONFIG"
     if grep -qE '^[[:space:]]*(-[[:space:]]+)?stop_check[[:space:]]*:' "$CONFIG"; then

@@ -1,11 +1,12 @@
-# `.claude/config.md` template
+# `.flow/config.md` template
 
-This file lives at `.claude/config.md` in your project. The `flow` plugin's commands and agents read it to learn how to run things in your stack.
+This file lives at `.flow/config.md` in your project. The `flow` plugin's commands and agents read it to learn how to run things in your stack.
 
 It is intentionally markdown — easy to read, easy to edit by hand. Values go after the colon on each line. Comments start with `<!--` or `>` blockquotes and are ignored.
 
-This file is **private by default** — `private_globs` includes `.claude`, so flow will not
-stage it. If you want it shared with collaborators, narrow `private_globs` (see SETUP.md).
+This file lives at `.flow/config.md` and is **shareable project truth** — commit it if you
+want collaborators and your other machines to get the same stack setup. Machine-specific
+values belong in `.flow/local.md`, which `private_globs` keeps out of git.
 
 ---
 
@@ -125,7 +126,7 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 > plans, and local Claude configuration.
 > Defaults to `.claude docs/superpowers .flow`.
 
-- private_globs: .claude docs/superpowers .flow
+- private_globs: .claude docs/superpowers .flow/local.md
 
 ---
 

@@ -1,11 +1,11 @@
 ---
-description: Bootstrap a new project with .claude/config.md and CLAUDE.md tailored to your stack.
+description: Bootstrap a new project with .flow/config.md and CLAUDE.md tailored to your stack.
 allowed-tools: Bash, Read, AskUserQuestion
 ---
 # /flow:init
 
 Bootstrap a project so the rest of `/flow:*` works. This drives `scripts/init.js`, which
-writes `.claude/config.md` and `CLAUDE.md` and auto-detects your stack commands from files
+writes `.flow/config.md` and `CLAUDE.md` and auto-detects your stack commands from files
 already on disk (`package.json` scripts, `go.mod`, `Cargo.toml`, `pyproject.toml`, …). You
 only need to supply what the script cannot infer.
 
@@ -37,7 +37,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/init.js \
 ```
 
 Omit a flag entirely rather than passing an empty string. The script never overwrites an
-existing `.claude/config.md`, and appends a marked `<!-- flow:begin -->` section to
+existing `.flow/config.md`, and appends a marked `<!-- flow:begin -->` section to
 `CLAUDE.md` idempotently — safe to re-run.
 
 ## Step 3: Backend bootstrapping

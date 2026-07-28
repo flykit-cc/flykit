@@ -15,7 +15,7 @@ Then, inside any project:
 /flow:init
 ```
 
-This creates `.claude/config.md` (project-level config) and `CLAUDE.md` (project memory) from templates, plus an `issues/` directory for the local PM backend.
+This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project memory) from templates, plus an `issues/` directory for the local PM backend.
 
 ## Commands
 
@@ -47,7 +47,7 @@ Custom agents communicate through files in `/tmp/flow-session/` (e.g. `investiga
 
 ## How `config.md` works
 
-`flow` reads project-specific settings from `$CLAUDE_PROJECT_DIR/.claude/config.md`. Fields:
+`flow` reads project-specific settings from `$CLAUDE_PROJECT_DIR/.flow/config.md`. Fields:
 
 | Field                  | Purpose                                                |
 | ---------------------- | ------------------------------------------------------ |
@@ -73,7 +73,7 @@ Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adap
 
 ### `config.md` is private by default
 
-`.claude/config.md` is how the same globally-installed plugin adapts to each repo's stack, but flow's default `private_globs` includes `.claude`, so `/flow:pause` will not stage it. Treat it as personal machine setup: sync it outside git if you want it on your other machines.
+`.flow/config.md` is how the same globally-installed plugin adapts to each repo's stack, but flow's default `private_globs` includes `.claude`, so `/flow:pause` will not stage it. Treat it as personal machine setup: sync it outside git if you want it on your other machines.
 
 If you deliberately want to share stack settings with collaborators, narrow `private_globs` and commit `config.md` yourself — see `SETUP.md`.
 
@@ -87,7 +87,7 @@ If you deliberately want to share stack settings with collaborators, narrow `pri
 | `file-protection`   | PreToolUse (Write/Edit)    | Blocks writes to env files, lockfiles, `.git/`, and `secret_globs`.   |
 | `secret-guard`      | PreToolUse (Read/Bash)     | Blocks reading secret files via the Read tool or shell `cat`/`grep`.  |
 
-Most hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init`.
+Most hooks fail open when `.flow/config.md` is missing, so `flow` is safe to install even before you run `/flow:init`.
 
 Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly or destructive commands" in `SETUP.md`.
 

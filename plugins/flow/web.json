@@ -9,7 +9,7 @@
     "Nine slash commands covering the full session lifecycle: init, continue (cold-starts or resumes), pause (including a land mode that ships), plus autonomous autopilot",
     "One focused reviewer agent, layered on Claude Code's built-in Explore and general-purpose agents plus the writing-plans skill, coordinated by a main orchestrator",
     "Autopilot: an autonomous multi-sprint loop that spawns a non-overlapping agent team, deep-reviews, ships, and self-generates work via audit",
-    "Project-agnostic: dev/lint/test/build commands come from your repo's .claude/config.md",
+    "Project-agnostic: dev/lint/test/build commands come from your repo's .flow/config.md",
     "Deterministic shell helpers + a pause-time verification gate (config key `stop_check`: ask, always, or never) that runs your build/test commands at deliberate push points",
     "Issue tracking that adapts to your backend (GitHub Issues, Linear, or local files)",
     "Deep-review mode that fans out parallel reviewers and loops fixes until clean",
@@ -24,7 +24,7 @@
   "skills": [
     {
       "name": "init",
-      "description": "Bootstrap a new project with .claude/config.md and CLAUDE.md tailored to your stack."
+      "description": "Bootstrap a new project with .flow/config.md and CLAUDE.md tailored to your stack."
     },
     {
       "name": "continue",

@@ -31,9 +31,9 @@ Adjust to match the actual layout once it stabilizes.
 
 ## Commands
 
-The exact commands live in `.claude/config.md`. Use those, not hardcoded scripts.
+The exact commands live in `.flow/config.md`. Use those, not hardcoded scripts.
 
-| What | Field in `.claude/config.md` |
+| What | Field in `.flow/config.md` |
 |------|------------------------------|
 | Start dev | `dev_cmd` |
 | Lint | `lint_cmd` |
@@ -62,7 +62,7 @@ If a command is missing, run `/flow:init` to set it.
 
 | Command | Purpose |
 |---------|---------|
-| `/flow:init` | Bootstrap `.claude/config.md` and `CLAUDE.md` |
+| `/flow:init` | Bootstrap `.flow/config.md` and `CLAUDE.md` |
 | `/flow:continue` | Resume the last session, or start a new one if none exists |
 | `/flow:pause` | Save WIP and shut down agents cleanly; `land` also closes issues, ships, and merges |
 | `/flow:audit` | Scan for smells, security holes, stale docs, dead code |

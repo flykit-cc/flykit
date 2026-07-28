@@ -26,7 +26,7 @@ Not flaws: naming, wording, section order, "could add later," hypothetical futur
 
 ## Process
 
-1. **Read the target in full** — the plan/spec/design (the most recent one in the conversation unless a path/section is named). Read any referenced code/CLAUDE.md/`.claude/config.md` when a claim is checkable — verify assumptions against reality rather than trusting the prose.
+1. **Read the target in full** — the plan/spec/design (the most recent one in the conversation unless a path/section is named). Read any referenced code/CLAUDE.md/`.flow/config.md` when a claim is checkable — verify assumptions against reality rather than trusting the prose.
 2. **Hunt** — walk each section asking: where does this fail open? what's the one under-specified detail an implementer would get wrong? what case is missing? does anything contradict? is any assumption actually false?
 3. **Verify each candidate — and research anything uncertain, don't assert from memory.** Before listing a flaw (or clearing an assumption), confirm it against a real source: local `--help`/code/`grep` for tool flags and repo behavior, and **WebSearch/WebFetch for external facts you're not certain of** (third-party tool footprints/requirements, pricing, API shapes, current versions, library behavior). Model knowledge is stale for fast-moving tools; an unverified assumption that clears a real flaw — or invents a fake one — is exactly the failure this command exists to prevent. If a load-bearing fact can't be verified, say so and mark it for build-time confirmation rather than asserting it. Discard preferences.
 4. **Self-check** — "Have I hunted a while and found nothing? Then report 'no real flaws' and stop." Don't manufacture a finding to justify the call.

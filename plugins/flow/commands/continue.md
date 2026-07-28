@@ -17,7 +17,7 @@ HELPERS_PAUSE="${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh"
 "$HELPERS" deps-ok            # ok | missing
 ```
 
-Also read `$CLAUDE_PROJECT_DIR/.claude/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`.
+Also read `$CLAUDE_PROJECT_DIR/.flow/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`.
 
 ## Step 2: Branch on progress state
 

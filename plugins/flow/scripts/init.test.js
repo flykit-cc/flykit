@@ -103,7 +103,7 @@ test('main: idempotent — running twice produces same files, no overwrite', () 
         assert.equal(fs.existsSync(issuesDir), true, 'issues/ created');
 
         // config.md still uses copyIfMissing: mutate it and ensure second run leaves it alone.
-        const configDest = path.join(sandbox, '.claude', 'config.md');
+        const configDest = path.join(sandbox, '.flow', 'config.md');
         if (fs.existsSync(configDest)) {
             fs.writeFileSync(configDest, 'USER EDIT');
         }
@@ -367,7 +367,7 @@ test('applyStackCommands: fills placeholder lines with detected values, leaves r
     assert.doesNotMatch(out, /\{/, 'no placeholder braces must survive');
 });
 
-test('main: end-to-end — pnpm project gets detected commands written into .claude/config.md, no placeholders', () => {
+test('main: end-to-end — pnpm project gets detected commands written into .flow/config.md, no placeholders', () => {
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     fs.writeFileSync(path.join(target, 'pnpm-lock.yaml'), '');
     fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({
@@ -376,7 +376,7 @@ test('main: end-to-end — pnpm project gets detected commands written into .cla
 
     runInit(target);
 
-    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
     assert.match(configText, /^- lint_cmd: pnpm lint$/m);
     assert.match(configText, /^- test_cmd: pnpm test$/m);
     assert.doesNotMatch(configText, /\{COMMAND_TO/, 'no unfilled placeholders must remain');
@@ -387,7 +387,7 @@ test('main: end-to-end — project with nothing detectable gets blank keys, no p
 
     runInit(target);
 
-    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
     assert.match(configText, /^- lint_cmd:$/m);
     assert.match(configText, /^- test_cmd:$/m);
     assert.doesNotMatch(configText, /\{COMMAND_TO/, 'no unfilled placeholders must remain');
@@ -397,7 +397,7 @@ test('main: end-to-end — re-running init does not touch an already-filled-in c
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     runInit(target);
 
-    const configDest = path.join(target, '.claude', 'config.md');
+    const configDest = path.join(target, '.flow', 'config.md');
     fs.writeFileSync(configDest, 'USER EDITED CONFIG');
 
     fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ scripts: { lint: 'eslint .' } }));
@@ -453,7 +453,7 @@ test('main: --workflow-mode and --pm-backend land in a freshly-written config.md
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     runInit(target, ['--workflow-mode', 'team', '--pm-backend', 'local']);
 
-    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
     assert.match(configText, /^- workflow_mode: team$/m);
     assert.match(configText, /^- pm_backend: local$/m);
 });
@@ -466,7 +466,7 @@ test('main: --pm-github-owner/--pm-github-repo/--pm-linear-team land in config.m
         '--pm-github-repo', 'flykit',
     ]);
 
-    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
     assert.match(configText, /^- pm_github_owner: flykit-cc$/m);
     assert.match(configText, /^- pm_github_repo: flykit$/m);
 });
@@ -475,7 +475,7 @@ test('main: omitted PM flags produce no {PLACEHOLDER} text', () => {
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     runInit(target);
 
-    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
     assert.doesNotMatch(configText, /\{OWNER\}|\{REPO\}|\{TEAM_KEY\}/, 'no unfilled PM placeholders must remain');
 });
 
@@ -483,14 +483,14 @@ test('main: invalid --workflow-mode exits non-zero and writes nothing', () => {
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     const code = runInit(target, ['--workflow-mode', 'bogus']);
     assert.notEqual(code, 0);
-    assert.equal(fs.existsSync(path.join(target, '.claude', 'config.md')), false, 'nothing should be written on validation failure');
+    assert.equal(fs.existsSync(path.join(target, '.flow', 'config.md')), false, 'nothing should be written on validation failure');
 });
 
 test('main: invalid --pm-backend exits non-zero and writes nothing', () => {
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     const code = runInit(target, ['--pm-backend', 'jira']);
     assert.notEqual(code, 0);
-    assert.equal(fs.existsSync(path.join(target, '.claude', 'config.md')), false, 'nothing should be written on validation failure');
+    assert.equal(fs.existsSync(path.join(target, '.flow', 'config.md')), false, 'nothing should be written on validation failure');
 });
 
 // --- CLAUDE.md template substitution (regression: /flow:init used to leave raw {PLACEHOLDERS}) ---
@@ -668,7 +668,7 @@ test('main: re-running with new PM flags never touches an already-filled-in conf
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
     runInit(target);
 
-    const configDest = path.join(target, '.claude', 'config.md');
+    const configDest = path.join(target, '.flow', 'config.md');
     fs.writeFileSync(configDest, 'USER EDITED CONFIG');
 
     runInit(target, ['--workflow-mode', 'team', '--pm-backend', 'linear', '--pm-linear-team', 'ENG']);

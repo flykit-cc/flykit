@@ -10,7 +10,7 @@
  *     [--pm-linear-team <team>]
  *
  * Creates (idempotent — never overwrites):
- *   <target>/.claude/config.md     from references/config-template.md
+ *   <target>/.flow/config.md     from references/config-template.md
  *   <target>/CLAUDE.md             from references/claude-md-template.md
  *   <target>/issues/               empty directory for local-backend issues
  *
@@ -389,12 +389,12 @@ function main() {
     const configSrc = path.join(refDir, 'config-template.md');
     const claudeSrc = path.join(refDir, 'claude-md-template.md');
 
-    const configDest = path.join(target, '.claude', 'config.md');
+    const configDest = path.join(target, '.flow', 'config.md');
     const claudeDest = path.join(target, 'CLAUDE.md');
     const issuesDir = path.join(target, 'issues');
 
     const configResult = copyIfMissing(configSrc, configDest);
-    report('.claude/config.md', configResult);
+    report('.flow/config.md', configResult);
     // Only fill in a freshly-created config.md — an existing one may already
     // hold the user's own edits, which copyIfMissing correctly left alone.
     if (configResult.created) {
@@ -438,7 +438,7 @@ function main() {
     }
     report('issues/', ensureDir(issuesDir));
 
-    process.stdout.write('\n[flow init] Done. Next: edit .claude/config.md to fill in your project commands.\n');
+    process.stdout.write('\n[flow init] Done. Next: edit .flow/config.md to fill in your project commands.\n');
     return 0;
 }
 

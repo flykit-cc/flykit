@@ -12,11 +12,11 @@ Stop work cleanly so it can be resumed with `/flow:continue`. The mechanics live
 | `/flow:pause local` | save state + commit, **no push** |
 | `/flow:pause land` | save state + run CI checks + commit + push + close issues, then: **solo** — rebase onto the default branch, ff-merge, delete branch; **team** — open a PR |
 
-Flags are space-separated args. `local` and `land` are mutually exclusive (land implies push). `land` is the only mode that ships — it's where CI checks and issue closing apply. Every invocation (including plain `pause`) asks whether to run build/test verification first, per `stop_check` in `.claude/config.md` (see Step 4). Whether `land` ff-merges or opens a PR depends on `workflow_mode`.
+Flags are space-separated args. `local` and `land` are mutually exclusive (land implies push). `land` is the only mode that ships — it's where CI checks and issue closing apply. Every invocation (including plain `pause`) asks whether to run build/test verification first, per `stop_check` in `.flow/config.md` (see Step 4). Whether `land` ff-merges or opens a PR depends on `workflow_mode`.
 
 ## Step 1: Load config
 
-Read `$CLAUDE_PROJECT_DIR/.claude/config.md`. Capture `workflow_mode`, `pm_backend` (+ `pm_*`), `memory_path`, `known_pitfalls_path`, `stop_check`. If the invocation is `land`, also capture `lint_cmd`, `typecheck_cmd`, `build_cmd`, `test_cmd`.
+Read `$CLAUDE_PROJECT_DIR/.flow/config.md`. Capture `workflow_mode`, `pm_backend` (+ `pm_*`), `memory_path`, `known_pitfalls_path`, `stop_check`. If the invocation is `land`, also capture `lint_cmd`, `typecheck_cmd`, `build_cmd`, `test_cmd`.
 
 ## Step 2: Shut down running agents
 

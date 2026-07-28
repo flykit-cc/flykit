@@ -15,7 +15,7 @@ Fully autonomous development loop. Picks issues, spawns a non-overlapping agent 
 
 ## Step 0: Load config and context
 
-Read `$CLAUDE_PROJECT_DIR/.claude/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`. If `.claude/config.md` is missing, tell the user to run `/flow:init` and stop.
+Read `$CLAUDE_PROJECT_DIR/.flow/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`. If `.flow/config.md` is missing, tell the user to run `/flow:init` and stop.
 
 Capture: `workflow_mode`, `pm_backend` (+ `pm_*`), `lint_cmd`, `typecheck_cmd`, `build_cmd`, `test_cmd`, `format_cmd`, `known_pitfalls_path` (default `CLAUDE.md`), `memory_path`.
 

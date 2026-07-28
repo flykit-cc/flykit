@@ -47,7 +47,7 @@ The state files above are machine-local working memory. Add them to `.gitignore`
 
 The plugin reads from your project. Your project does not reach into the plugin. If you find yourself wanting to fork the plugin to change a command, first ask whether the change belongs in `config.md` or `settings.json` instead.
 
-## Why `.claude/config.md` and not `.claude/settings.json`?
+## Why `.flow/config.md` and not `.claude/settings.json`?
 
 `settings.json` is owned by Claude Code itself — hooks, permissions, MCP servers, env vars. It has a strict schema.
 
@@ -65,4 +65,4 @@ Claude Code reads `CLAUDE.md` from the project root automatically on every sessi
 
 ## Updating the plugin
 
-Plugin updates ship via the marketplace. Your project's `.claude/config.md` and `CLAUDE.md` are unaffected — they are yours. If a plugin update changes the template, `/flow:init` will offer to merge or skip when you re-run it; it never silently overwrites.
+Plugin updates ship via the marketplace. Your project's `.flow/config.md` and `CLAUDE.md` are unaffected — they are yours. If a plugin update changes the template, `/flow:init` will offer to merge or skip when you re-run it; it never silently overwrites.

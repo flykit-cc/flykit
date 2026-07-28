@@ -8,7 +8,7 @@ Find problems that nobody opened a ticket for. This is proactive — run it mont
 
 ## Step 1: Load config
 
-Read `$CLAUDE_PROJECT_DIR/.claude/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`. Note the `pm_backend` and `known_pitfalls_path`.
+Read `$CLAUDE_PROJECT_DIR/.flow/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.md`. Note the `pm_backend` and `known_pitfalls_path`.
 
 ## Step 2: Spawn Explore
 

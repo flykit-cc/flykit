@@ -16,15 +16,15 @@ From inside the project you want flow to manage:
 
 This creates (without overwriting anything that already exists):
 
-- `.claude/config.md` — project-specific settings flow reads from.
+- `.flow/config.md` — project-specific settings flow reads from.
 - `CLAUDE.md` — project memory loaded into every Claude Code session.
 - `issues/` — local issue store (only used if `pm_backend: local`).
 
 If a file already exists, init prints `already exists, skipping` and moves on.
 
-## 2. Fill in `.claude/config.md`
+## 2. Fill in `.flow/config.md`
 
-Open `.claude/config.md` and replace the placeholders. Minimum useful set:
+Open `.flow/config.md` and replace the placeholders. Minimum useful set:
 
 ```
 workflow_mode: solo
@@ -57,7 +57,7 @@ pm_linear_team: <TEAM_KEY>
 
 (Linear support requires the Linear MCP to be configured separately.)
 
-## 3. Keep `.claude/config.md` out of version control
+## 3. Keep `.flow/config.md` out of version control
 
 flow treats `.claude/` as **private by default** — see `private_globs` in your config. It
 is your personal setup, not project truth, and `/flow:pause` will refuse to stage anything
@@ -71,7 +71,7 @@ If you deliberately want to share stack settings with collaborators, narrow the 
 private_globs: .claude/settings.local.json docs/superpowers .flow
 ```
 
-Then commit `.claude/config.md` yourself. flow will no longer block it.
+Then commit `.flow/config.md` yourself. flow will no longer block it.
 
 ## 4. (Optional) Enable strict file protection
 
@@ -83,7 +83,7 @@ Every `/flow:pause` invocation — including plain checkpoints, not just `land` 
 
 By default (`stop_check: ask`), it prompts each time via `AskUserQuestion`, recommending **Run build + test** for `/flow:pause land` (you're about to ship) and **Skip** for a plain `/flow:pause`/`/flow:pause local` (a checkpoint isn't a ship). Answering "Always run (save to config)" writes `stop_check: always` so it never asks again.
 
-You can set this ahead of time in `.claude/config.md`:
+You can set this ahead of time in `.flow/config.md`:
 
 ```
 stop_check: always   # run build_cmd + test_cmd every pause, no prompt
@@ -131,7 +131,7 @@ Run a quick health check:
 ```
 
 It reports:
-- whether `.claude/config.md` is present and parseable,
+- whether `.flow/config.md` is present and parseable,
 - which commands are configured vs missing,
 - whether the PM backend is reachable.
 
@@ -143,7 +143,7 @@ It reports:
 - `auto-lint` and `file-protection` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.). Without it, the hook fails open — it will not block anything.
 - Check Claude Code's hook logs for any non-zero exits.
 
-### `.claude/config.md` is missing
+### `.flow/config.md` is missing
 - Re-run `/flow:init`. It is safe — existing files are preserved.
 - If you deleted it on purpose: hooks fail open (silent no-op), so the plugin simply does nothing until config is back.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # auto-lint.sh
 # PostToolUse hook for Write|Edit. Runs format_cmd and lint_cmd from
-# .claude/config.md against the file that was just touched. Non-blocking:
+# .flow/config.md against the file that was just touched. Non-blocking:
 # always exits 0; reports findings on stderr.
 #
 # This hook only runs commands known to accept a single file path argument
@@ -14,7 +14,12 @@
 set -u
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
-CONFIG="$PROJECT_DIR/.claude/config.md"
+
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../scripts/lib.sh
+. "$SOURCE_DIR/../scripts/lib.sh"
+
+CONFIG="$(flow_config_path)"
 
 # Need jq to parse tool input.
 if ! command -v jq >/dev/null 2>&1; then
@@ -43,17 +48,10 @@ esac
 # Extract a value from config.md. Format expected:
 #   key: value
 # or in a code block. Take the last non-empty line matching `key:`.
-extract_cmd() {
-    local key="$1"
-    grep -E "^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:" "$CONFIG" 2>/dev/null \
-        | tail -n1 \
-        | sed -E "s/^[[:space:]]*(-[[:space:]]+)?${key}[[:space:]]*:[[:space:]]*//" \
-        | sed -E 's/[[:space:]]*$//' \
-        | sed -E 's/^["'\'']//; s/["'\'']$//'
-}
-
-FORMAT_CMD=$(extract_cmd "format_cmd")
-LINT_CMD=$(extract_cmd "lint_cmd")
+# Config parsing lives in lib.sh — flow_extract also strips backticks, which the
+# copy that used to live here did not.
+FORMAT_CMD=$(flow_extract format_cmd)
+LINT_CMD=$(flow_extract lint_cmd)
 
 # Decide whether a configured command accepts a single trailing file path
 # argument. Looks at the tool name — the first word after unwrapping a

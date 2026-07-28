@@ -9,11 +9,11 @@ const path = require('node:path');
 
 const LIB = path.join(__dirname, 'lib.sh');
 
-/** Make a temp project root containing .claude/config.md with `body`. */
+/** Make a temp project root containing .flow/config.md with `body`. */
 function makeProject(body) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-lib-'));
-    fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.claude', 'config.md'), body);
+    fs.mkdirSync(path.join(root, '.flow'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.flow', 'config.md'), body);
     return root;
 }
 
@@ -94,14 +94,16 @@ test('flow_private_regex matches only whole path segments, not substrings', () =
     assert.deepEqual(matched.sort(), ['.claude/config.md', 'docs/superpowers/plan.md'].sort());
 });
 
-// 10. Arming markers (.flow/.allow-destructive, .flow/.allow-expensive) must
-// be private by default, so `finish` never stages a committed standing
-// bypass into the repo (previously only .flow/local.md was covered).
-test('flow_path_is_private covers the whole .flow directory by default', () => {
+// 10. `.flow/` now holds the project's config, which is shareable project truth,
+// so the whole directory can no longer be private. Only the machine-local
+// override is. (The arming markers this once guarded went away with the
+// bash-guard hook — permissions.ask replaced them.)
+test('flow_path_is_private covers .flow/local.md but not .flow/config.md', () => {
     const root = makeProject('# empty\n');
-    assert.equal(shStatus(root, 'flow_path_is_private ".flow/.allow-destructive"'), 0);
-    assert.equal(shStatus(root, 'flow_path_is_private ".flow/.allow-expensive"'), 0);
-    assert.equal(shStatus(root, 'flow_path_is_private ".flow/local.md"'), 0);
+    assert.equal(shStatus(root, 'flow_path_is_private ".flow/local.md"'), 0,
+        'machine-local override must stay private');
+    assert.equal(shStatus(root, 'flow_path_is_private ".flow/config.md"'), 1,
+        'project config must be stageable — it is shareable project truth');
 });
 
 test('flow_stop_check_mode defaults to ask and rejects junk', () => {
