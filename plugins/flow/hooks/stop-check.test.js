@@ -46,3 +46,14 @@ test('a failing build gate blocks when stop_check is lint+build', () => {
 
     assert.match(out, /"decision"\s*:\s*"block"/);
 });
+
+test('stop_check off exits early but still consumes a stale marker', () => {
+    const root = makeRepo('- stop_check: off\n- build_cmd: false\n');
+    fs.writeFileSync(path.join(root, '.build-check'), '');
+
+    const out = runHook(root);
+
+    assert.ok(!out.includes('"decision"'), 'must not emit a block decision');
+    assert.equal(fs.existsSync(path.join(root, '.build-check')), false,
+        'stale marker must still be consumed even when mode is off');
+});
