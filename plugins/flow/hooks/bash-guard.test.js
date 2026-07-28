@@ -202,6 +202,33 @@ test('blocks git restore --worktree', () => {
     assert.equal(runGuard(root, 'git restore --worktree src/a.ts').status, 2);
 });
 
+// -- fix-round-2: `git reset --hard` must be scoped per statement like
+// rm/restore, not matched with a bare `.*` that can reach across `;`.
+
+test('does not block --hard text in an unrelated later statement', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git reset --soft HEAD; echo --hard').status, 0);
+});
+
+test('blocks genuine git reset --hard forms', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git reset --hard').status, 2);
+    assert.equal(runGuard(root, 'git reset --hard HEAD~1').status, 2);
+    assert.equal(runGuard(root, 'git reset HEAD~1 --hard').status, 2);
+});
+
+test('allows non-hard reset forms', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git reset --soft HEAD~1').status, 0);
+    assert.equal(runGuard(root, 'git reset --mixed').status, 0);
+    assert.equal(runGuard(root, 'git reset').status, 0);
+});
+
+test('allows --hard mentioned inside a commit message', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git commit -m "use --hard carefully"').status, 0);
+});
+
 test('fails open when jq is unavailable', () => {
     const root = makeProject('# empty\n');
     // A PATH of '/nonexistent' would also hide bash itself, so execFileSync

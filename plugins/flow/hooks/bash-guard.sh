@@ -186,11 +186,24 @@ _restore_stmt_destructive() {
 }
 restore_is_destructive() { for_each_statement _restore_stmt_destructive; }
 
+# `git reset --hard` discards uncommitted work irreversibly, with the flag
+# in either position (`--hard` before or after the ref). Bare `.*` between
+# `reset` and `--hard` (the original brief's pattern) reaches across
+# statement separators — `git reset --soft HEAD; echo --hard` doesn't touch
+# reset at all, but `.*` doesn't know that and blocks it anyway. Scoped
+# per-statement like rm/restore so a `--hard` in a different statement (or a
+# commit message, once quotes are stripped) can't trigger this.
+_reset_stmt_destructive() {
+    printf '%s' "$1" | grep -qE '(^| )git reset( |$)' || return 1
+    printf '%s' "$1" | grep -qE '(^| )--hard( |$)'
+}
+reset_is_destructive() { for_each_statement _reset_stmt_destructive; }
+
 if matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+add[$SENTINEL[:space:]]+(-A|--all|-u|\\.)([$SENTINEL[:space:]]|\$)"; then
     DESTRUCTIVE_REASON="blanket staging sweeps up files you parked — stage named paths instead"
 elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+commit[$SENTINEL[:space:]]+(-[a-zA-Z]*a[a-zA-Z]*|--all)([$SENTINEL[:space:]]|\$)"; then
     DESTRUCTIVE_REASON="\`git commit -a\` stages every tracked change — stage named paths instead"
-elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+reset[$SENTINEL[:space:]]+.*--hard"; then
+elif reset_is_destructive; then
     DESTRUCTIVE_REASON="\`git reset --hard\` discards uncommitted work irreversibly"
 elif checkout_is_destructive; then
     DESTRUCTIVE_REASON="this discards uncommitted changes to those paths irreversibly"
