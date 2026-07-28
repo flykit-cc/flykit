@@ -60,6 +60,23 @@ test('the arming marker allows once, then is consumed', () => {
     assert.equal(runGuard(root, 'fly deploy').status, 2, 'next run is blocked again');
 });
 
+test('blocks the same command with extra internal whitespace', () => {
+    const root = makeProject('# empty\n');
+    const r = runGuard(root, 'fly   deploy   --app prod');
+    assert.equal(r.status, 2, 'runs of whitespace must not defeat the match');
+});
+
+test('blocks the same command wrapped in quotes', () => {
+    const root = makeProject('# empty\n');
+    const r = runGuard(root, '"fly" deploy --app prod');
+    assert.equal(r.status, 2, 'quoting a token must not defeat the match');
+});
+
+test('still allows an ordinary command after normalisation', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'echo "hello   world"').status, 0);
+});
+
 test('fails open when jq is unavailable', () => {
     const root = makeProject('# empty\n');
     // A PATH of '/nonexistent' would also hide bash itself, so execFileSync

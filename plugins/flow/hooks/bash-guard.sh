@@ -42,6 +42,15 @@ block() {
     exit 2
 }
 
+# Collapse runs of whitespace to a single space and strip quote characters, so
+# `fly   deploy`, `"fly" deploy`, and `fly deploy` all compare equal. Never
+# mutate $COMMAND itself — the block message must show what the user typed.
+normalize() {
+    printf '%s' "$1" | tr -d "\"'" | tr -s '[:space:]' ' '
+}
+
+NORM_COMMAND="$(normalize "$COMMAND")"
+
 # ---- 1. External cost -----------------------------------------------------
 EXPENSIVE_CMDS="$(flow_expensive_cmds)"
 IFS=','
@@ -50,8 +59,10 @@ for pattern in $EXPENSIVE_CMDS; do
     pattern="${pattern#"${pattern%%[![:space:]]*}"}"
     pattern="${pattern%"${pattern##*[![:space:]]}"}"
     [ -n "$pattern" ] || continue
-    case "$COMMAND" in
-        *"$pattern"*)
+    NORM_PATTERN="$(normalize "$pattern")"
+    [ -n "$NORM_PATTERN" ] || continue
+    case "$NORM_COMMAND" in
+        *"$NORM_PATTERN"*)
             unset IFS
             if consume_marker '.allow-expensive'; then
                 exit 0
