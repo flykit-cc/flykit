@@ -112,6 +112,55 @@ test('still blocks when a later line genuinely contains the pattern', () => {
     assert.equal(r.status, 2, 'line 2 really is a deploy invocation');
 });
 
+test('blocks blanket staging', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git add -A').status, 2);
+    assert.equal(runGuard(root, 'git add .').status, 2);
+    assert.equal(runGuard(root, 'git add -u').status, 2);
+    assert.equal(runGuard(root, 'git commit -am "wip"').status, 2);
+});
+
+test('allows staging a named path', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git add src/index.ts').status, 0);
+    assert.equal(runGuard(root, 'git add -- src/a.ts src/b.ts').status, 0);
+});
+
+test('blocks destructive commands', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git reset --hard HEAD~1').status, 2);
+    assert.equal(runGuard(root, 'git checkout -- src/a.ts').status, 2);
+    assert.equal(runGuard(root, 'git restore src/a.ts').status, 2);
+    assert.equal(runGuard(root, 'rm -rf build').status, 2);
+});
+
+test('allows ordinary git and rm', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git status').status, 0);
+    assert.equal(runGuard(root, 'git reset --soft HEAD~1').status, 0);
+    assert.equal(runGuard(root, 'rm build/tmp.txt').status, 0);
+});
+
+test('the destructive marker allows once, then is consumed', () => {
+    const root = makeProject('# empty\n');
+    fs.mkdirSync(path.join(root, '.flow'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.flow', '.allow-destructive'), '');
+
+    assert.equal(runGuard(root, 'git add -A').status, 0);
+    assert.equal(fs.existsSync(path.join(root, '.flow', '.allow-destructive')), false);
+    assert.equal(runGuard(root, 'git add -A').status, 2);
+});
+
+test('blocks a quoted form that only matches after normalization', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git "add" -A').status, 2);
+});
+
+test('blocks a destructive command on a later line after normalization', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'echo hi\ngit add -A').status, 2);
+});
+
 test('fails open when jq is unavailable', () => {
     const root = makeProject('# empty\n');
     // A PATH of '/nonexistent' would also hide bash itself, so execFileSync

@@ -6,7 +6,8 @@
 #      CI minutes, cloud builds, deploys, metered backends, compute. Token spend
 #      is NOT covered: it is capped by the plan and stops on its own.
 #
-#   2. Irreversible actions (added in the next task).
+#   2. Irreversible actions — blanket staging, hard resets, recursive
+#      force-deletes. Reversible work needs no approval; this gates the rest.
 #
 # Fails OPEN when jq is missing or no command can be read. Fails CLOSED (exit 2)
 # on a positive match. Arming markers under .flow/ are one-shot: consumed on use.
@@ -85,5 +86,50 @@ To stop guarding it, edit \`expensive_cmds\` in .claude/config.md."
     esac
 done
 unset IFS
+
+# ---- 2. Irreversible actions ----------------------------------------------
+# The line the user draws is reversibility, not permission: proceed freely on
+# reversible work, gate anything that destroys state or sweeps up files that
+# were deliberately parked. Blanket staging is how private paths once reached a
+# public remote.
+# Matched with anchored regexes, not glob substrings: a `case` pattern of
+# *"git add ."* also matches `git add .gitignore`, which is a named path and
+# perfectly safe. The argument must be the WHOLE token.
+#
+# Matched against NORM_COMMAND (quotes stripped, so `git "add" -A` is caught),
+# not raw $COMMAND. But normalize() turns newlines into the sentinel byte
+# \001, not a character in [[:space:]] — so every boundary class below adds
+# the sentinel alongside [:space:], or a command on line 2 of a multi-line
+# script would slip past the leading anchor.
+SENTINEL=$'\001'
+DESTRUCTIVE_REASON=""
+matches() { printf '%s' "$NORM_COMMAND" | grep -qE "$1"; }
+
+if matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+add[$SENTINEL[:space:]]+(-A|--all|-u|\\.)([$SENTINEL[:space:]]|\$)"; then
+    DESTRUCTIVE_REASON="blanket staging sweeps up files you parked — stage named paths instead"
+elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+commit[$SENTINEL[:space:]]+(-[a-zA-Z]*a[a-zA-Z]*|--all)([$SENTINEL[:space:]]|\$)"; then
+    DESTRUCTIVE_REASON="\`git commit -a\` stages every tracked change — stage named paths instead"
+elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+reset[$SENTINEL[:space:]]+.*--hard"; then
+    DESTRUCTIVE_REASON="\`git reset --hard\` discards uncommitted work irreversibly"
+elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+checkout[$SENTINEL[:space:]]+--[$SENTINEL[:space:]]"; then
+    DESTRUCTIVE_REASON="this discards uncommitted changes to those paths irreversibly"
+elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+restore[$SENTINEL[:space:]]+(--staged[$SENTINEL[:space:]]+)?[^-]"; then
+    DESTRUCTIVE_REASON="this discards uncommitted changes to those paths irreversibly"
+elif matches "(^|[;&|]|[$SENTINEL[:space:]])rm[$SENTINEL[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR])"; then
+    DESTRUCTIVE_REASON="recursive force-delete is irreversible"
+fi
+
+if [ -n "$DESTRUCTIVE_REASON" ]; then
+    if consume_marker '.allow-destructive'; then
+        exit 0
+    fi
+    block "$DESTRUCTIVE_REASON" \
+"Command: $COMMAND
+
+Reversible work needs no approval; this is not reversible.
+
+To allow it once:
+  mkdir -p .flow && touch .flow/.allow-destructive"
+fi
 
 exit 0
