@@ -40,3 +40,10 @@ data/
 
 # Superpowers SDD scratch (plan ledgers, briefs, review packages) — never published
 .superpowers/
+
+# flow plugin working state — private to this machine, never published.
+# Covers the runtime arming markers (.flow/.allow-*), machine-local overrides
+# (.flow/local.md), and session state (.flow/session-progress.md, session-log.md).
+# Note: flow's own docs treat .flow/config.md as shareable if a project wants it.
+# This repo does not — flow here is the author's personal setup, not project truth.
+.flow/
