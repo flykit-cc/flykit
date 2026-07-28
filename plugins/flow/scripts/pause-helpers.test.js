@@ -66,3 +66,56 @@ test('finish aborts when a private path is already staged', () => {
         return true;
     });
 });
+
+function run(root, args) {
+    return execFileSync('bash', [HELPERS, ...args], {
+        encoding: 'utf8',
+        cwd: root,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+        stdio: 'pipe',
+    });
+}
+
+test('verification-mode defaults to ask and reflects config', () => {
+    const root = makeRepo();
+    assert.equal(run(root, ['verification-mode']).trim(), 'ask');
+
+    fs.appendFileSync(path.join(root, '.claude', 'config.md'), '- stop_check: never\n');
+    assert.equal(run(root, ['verification-mode']).trim(), 'never');
+});
+
+test('set-verification-mode persists the choice into config.md', () => {
+    const root = makeRepo();
+    const out = run(root, ['set-verification-mode', 'always']);
+    assert.match(out, /stop_check set to always/);
+    const config = fs.readFileSync(path.join(root, '.claude', 'config.md'), 'utf8');
+    assert.match(config, /stop_check:\s*always/);
+    assert.equal(run(root, ['verification-mode']).trim(), 'always');
+
+    // Re-running with a different value replaces rather than duplicating the line.
+    run(root, ['set-verification-mode', 'never']);
+    const config2 = fs.readFileSync(path.join(root, '.claude', 'config.md'), 'utf8');
+    assert.equal((config2.match(/stop_check\s*:/g) || []).length, 1);
+    assert.equal(run(root, ['verification-mode']).trim(), 'never');
+});
+
+test('set-verification-mode rejects an unknown value', () => {
+    const root = makeRepo();
+    assert.throws(() => run(root, ['set-verification-mode', 'bogus']));
+});
+
+test('run-verification reports pass when build_cmd/test_cmd succeed', () => {
+    const root = makeRepo();
+    fs.appendFileSync(path.join(root, '.claude', 'config.md'), '- build_cmd: true\n- test_cmd: true\n');
+    assert.equal(run(root, ['run-verification']).trim(), 'verification-passed');
+});
+
+test('run-verification reports failure and exits non-zero when build_cmd fails', () => {
+    const root = makeRepo();
+    fs.appendFileSync(path.join(root, '.claude', 'config.md'), '- build_cmd: false\n- test_cmd: true\n');
+    assert.throws(() => run(root, ['run-verification']), (err) => {
+        assert.equal(err.status, 1);
+        assert.match(String(err.stdout), /verification-failed:build/);
+        return true;
+    });
+});

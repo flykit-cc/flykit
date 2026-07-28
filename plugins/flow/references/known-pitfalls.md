@@ -24,7 +24,7 @@ Bad entries are vague style preferences ("write clean code"), one-off bugs that 
 
 ## Optional: mechanical enforcement
 
-You can wire a hook (e.g. a `stop-check.sh`) that greps the diff for patterns derived from the pitfalls list and refuses to let a session end if any are present. This is opt-in and lives in your project's `.claude/settings.json`, not in this plugin.
+You can wire a hook (e.g. a `pitfall-guard.sh`) that greps the diff for patterns derived from the pitfalls list and refuses to let a session end if any are present. This is opt-in and lives in your project's `.claude/settings.json`, not in this plugin.
 
 The plugin only owns the *pattern*. Whether you enforce it mechanically is your call.
 

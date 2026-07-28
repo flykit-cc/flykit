@@ -141,15 +141,17 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 
 ---
 
-## Stop-time verification
+## Pause-time verification
 
-> Optional. How much the Stop hook runs when Claude finishes a turn.
-> `off` — nothing. `lint` — background lint/format only (default).
-> `lint+build` — also honour the one-shot build/test gate armed by `/flow:pause land`.
-> Builds and test suites cost time, disk, and sometimes money; keep this at `lint`
-> unless you want the heavier gate.
+> Optional. Controls the verification question `/flow:pause` asks before committing
+> (and, for `land`, before shipping): whether to run `build_cmd` + `test_cmd` now.
+> `ask` (default) — prompt each time, recommending **run** for `land` and **skip**
+> for a plain checkpoint. `always` — run without prompting (choosing "Always run" in
+> the prompt also writes this). `never` — skip without prompting.
+> Builds and test suites cost time, disk, and sometimes money; `ask` lets you decide
+> per pause rather than always paying that cost.
 
-- stop_check: lint
+- stop_check: ask
 
 ---
 

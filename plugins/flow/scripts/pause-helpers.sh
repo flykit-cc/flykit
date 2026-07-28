@@ -13,6 +13,9 @@
 #   pause-helpers.sh report                        # branch + last commit, for the chat report
 #   pause-helpers.sh drift-check                   # heuristic doc-drift warnings (non-blocking)
 #   pause-helpers.sh save-memory <index> <file>... # append memory files + refresh index
+#   pause-helpers.sh verification-mode               # ask | always | never (from config, default ask)
+#   pause-helpers.sh set-verification-mode <ask|always|never>  # persist the choice into .claude/config.md
+#   pause-helpers.sh run-verification               # run build_cmd + test_cmd, report pass/fail
 #   pause-helpers.sh finish <title-file> <body-file> <commit-msg> [--no-push|--land] [--close <token>]
 
 set -euo pipefail
@@ -193,6 +196,65 @@ case "$cmd" in
       COUNT=$((COUNT + 1))
     done
     echo "memory saved: $COUNT file(s) under $MEM_DIR"
+    ;;
+
+  verification-mode)
+    flow_stop_check_mode
+    ;;
+
+  set-verification-mode)
+    VALUE="${1:-}"
+    case "$VALUE" in
+      ask|always|never) ;;
+      *) echo "set-verification-mode needs one of: ask|always|never" >&2; exit 1 ;;
+    esac
+    CONFIG="$REPO_ROOT/.claude/config.md"
+    mkdir -p "$(dirname "$CONFIG")" 2>/dev/null || true
+    [ -f "$CONFIG" ] || : > "$CONFIG"
+    if grep -qE '^[[:space:]]*(-[[:space:]]+)?stop_check[[:space:]]*:' "$CONFIG"; then
+      TMP=$(mktemp)
+      awk -v val="$VALUE" '
+        BEGIN{done=0}
+        /^[[:space:]]*(-[[:space:]]+)?stop_check[[:space:]]*:/{
+          if (!done) { sub(/:.*/, ": " val); done=1 }
+        }
+        {print}
+      ' "$CONFIG" > "$TMP" && mv "$TMP" "$CONFIG"
+    else
+      printf '\n- stop_check: %s\n' "$VALUE" >> "$CONFIG"
+    fi
+    echo "stop_check set to $VALUE"
+    ;;
+
+  run-verification)
+    # Runs build_cmd + test_cmd synchronously (whichever are non-empty) and
+    # reports pass/fail. Called only when the pause-time verification
+    # decision (see commands/pause.md) says to run it.
+    BUILD_CMD="$(flow_extract build_cmd)"
+    TEST_CMD="$(flow_extract test_cmd)"
+    FAIL=0
+    FAILED_LABEL=""
+    OUT=""
+    for pair in "build:$BUILD_CMD" "test:$TEST_CMD"; do
+      label="${pair%%:*}"; vcmd="${pair#*:}"
+      [ -n "$vcmd" ] || continue
+      if ! vout=$(cd "$REPO_ROOT" && eval "$vcmd" 2>&1); then
+        FAIL=1
+        [ -z "$FAILED_LABEL" ] && FAILED_LABEL="$label"
+        vtail=$(printf '%s\n' "$vout" | tail -30)
+        OUT="${OUT}
+--- ${label} failed (${vcmd}) ---
+${vtail}
+"
+      fi
+    done
+    if [ "$FAIL" -ne 0 ]; then
+      echo "verification-failed:$FAILED_LABEL"
+      printf '%s\n' "$OUT"
+      exit 1
+    else
+      echo "verification-passed"
+    fi
     ;;
 
   finish)

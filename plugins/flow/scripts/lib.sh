@@ -149,16 +149,16 @@ flow_private_regex() {
     printf '%s' "$out"
 }
 
-# How much the Stop hook verifies. Config key: stop_check.
-# off        — never run anything on stop
-# lint       — background lint/format only (default)
-# lint+build — also honour the one-shot .build-check build/test gate
+# How /flow:pause's verification decision behaves. Config key: stop_check.
+# ask    — prompt each time, with a recommendation based on the invocation (default)
+# always — run build_cmd + test_cmd without prompting
+# never  — skip without prompting
 flow_stop_check_mode() {
     local v
     v="$(flow_extract stop_check)"
     case "$v" in
-        off|lint|lint+build) printf '%s' "$v" ;;
-        *)                   printf 'lint' ;;
+        ask|always|never) printf '%s' "$v" ;;
+        *)                printf 'ask' ;;
     esac
 }
 

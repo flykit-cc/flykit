@@ -77,17 +77,21 @@ Then commit `.claude/config.md` yourself. flow will no longer block it.
 
 `file-protection.sh` is on by default and blocks writes to env files, lockfiles, `.git/`, `node_modules/`, and `.claude/settings.local.json`. To customise, edit `${CLAUDE_PLUGIN_ROOT}/hooks/file-protection.sh` (or fork the plugin).
 
-## 5. (Optional) Enable the build/test gate on stop
+## 5. (Optional) Tune the pause-time verification prompt
 
-By default (`stop_check: lint`), the Stop hook only runs `lint_cmd` + `format_cmd`, in the background, and never blocks — it just appends to `.claude/.stop-check.log`.
+Every `/flow:pause` invocation — including plain checkpoints, not just `land` — asks whether to run `build_cmd` + `test_cmd` before committing. This is a question asked at the moment a human is already deciding to pause, not something a background hook fires blindly.
 
-To also get a blocking `build_cmd` + `test_cmd` gate, set in `.claude/config.md`:
+By default (`stop_check: ask`), it prompts each time via `AskUserQuestion`, recommending **Run build + test** for `/flow:pause land` (you're about to ship) and **Skip** for a plain `/flow:pause`/`/flow:pause local` (a checkpoint isn't a ship). Answering "Always run (save to config)" writes `stop_check: always` so it never asks again.
+
+You can set this ahead of time in `.claude/config.md`:
 
 ```
-stop_check: lint+build
+stop_check: always   # run build_cmd + test_cmd every pause, no prompt
+stop_check: never    # never run them, no prompt
+stop_check: ask       # default — prompt each time
 ```
 
-With this set, `/flow:pause land` arms a one-shot marker (`.build-check`) each time it runs; the next Stop event consumes it, runs build + test synchronously, and blocks on failure. You never touch `.build-check` yourself — `/flow:pause land` creates it, and the hook always removes it after one check, whether or not the gate is armed. Leaving `stop_check` at `lint` (or setting it to `off`) means `/flow:pause land` never arms the marker, so build/test never run — a stale `.build-check` from an old flow version is deleted unused rather than firing.
+If verification runs and fails, `/flow:pause` reports the failure and asks whether to fix now or proceed anyway (a checkpoint may save broken WIP; `land` instead asks fix-now-or-abort, since it never ships on a failing build). Either way, the outcome — `passed` / `not run` / `failed (...)` — is written to `session-progress.md` as a `Verification:` line, and `/flow:continue` surfaces it on the next resume if it isn't `passed`.
 
 ## 6. Approval for costly or destructive commands
 
@@ -146,12 +150,6 @@ It reports:
 ### `auto-lint` is too noisy or too slow
 - Set `lint_cmd` and `format_cmd` to commands that target a single file efficiently.
 - Or temporarily comment out the `PostToolUse` block in `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`.
-
-### `stop-check` is blocking me from finishing
-- `lint_cmd`/`format_cmd` run in the background and never block — if you're blocked, it's the build/test gate, which only runs when `stop_check: lint+build` and only right after `/flow:pause land` armed it.
-- Fix the `build_cmd`/`test_cmd` failures it reports — that's the point.
-- The gate is one-shot: it already consumed its marker, so simply stopping again won't re-trigger it. It only fires again after the next `/flow:pause land`.
-- If a check is fundamentally wrong for your project, set the relevant `*_cmd` to blank in `.claude/config.md`, or drop `stop_check` back to `lint`.
 
 ### `gh` / Linear errors during issue filing or closing
 - `gh`: run `gh auth login` once. Confirm with `gh auth status`.

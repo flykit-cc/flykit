@@ -104,11 +104,11 @@ test('flow_path_is_private covers the whole .flow directory by default', () => {
     assert.equal(shStatus(root, 'flow_path_is_private ".flow/local.md"'), 0);
 });
 
-test('flow_stop_check_mode defaults to lint and rejects junk', () => {
-    assert.equal(sh(makeProject('# empty\n'), 'flow_stop_check_mode'), 'lint');
-    assert.equal(sh(makeProject('- stop_check: nonsense\n'), 'flow_stop_check_mode'), 'lint');
-    assert.equal(sh(makeProject('- stop_check: off\n'), 'flow_stop_check_mode'), 'off');
-    assert.equal(sh(makeProject('- stop_check: lint+build\n'), 'flow_stop_check_mode'), 'lint+build');
+test('flow_stop_check_mode defaults to ask and rejects junk', () => {
+    assert.equal(sh(makeProject('# empty\n'), 'flow_stop_check_mode'), 'ask');
+    assert.equal(sh(makeProject('- stop_check: nonsense\n'), 'flow_stop_check_mode'), 'ask');
+    assert.equal(sh(makeProject('- stop_check: never\n'), 'flow_stop_check_mode'), 'never');
+    assert.equal(sh(makeProject('- stop_check: always\n'), 'flow_stop_check_mode'), 'always');
 });
 
 test('flow_model_tier falls back per tier and honours config', () => {

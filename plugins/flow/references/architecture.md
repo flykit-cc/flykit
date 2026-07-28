@@ -22,8 +22,6 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
   session-progress.md                created by /flow:continue (cold start); settled on /flow:pause land — deleted when everything shipped, kept while tasks remain
   session-log.md                     dated session blocks, newest first (written by /flow:pause, all modes)
   .claude/state/last-pause           pause marker (HEAD/branch/timestamp)
-  .claude/.stop-check.log            background lint/format output from the Stop hook
-  .build-check                       one-shot build-gate marker, armed by /flow:pause land
   .flow/                             machine-local flow state — never commit
   issues/                            only when pm_backend = local
 ```

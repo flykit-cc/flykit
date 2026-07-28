@@ -86,9 +86,8 @@ If you deliberately want to share stack settings with collaborators, narrow `pri
 | `post-bash-reap`    | PostToolUse (Bash)         | Opt-in (`reap_orphans: true`): reaps orphan subprocesses after Bash.  |
 | `file-protection`   | PreToolUse (Write/Edit)    | Blocks writes to env files, lockfiles, `.git/`, and `secret_globs`.   |
 | `secret-guard`      | PreToolUse (Read/Bash)     | Blocks reading secret files via the Read tool or shell `cat`/`grep`.  |
-| `stop-check`        | Stop                       | Background lint/format by default; synchronous build/test gate only when `/flow:pause land` armed `.build-check`. |
 
-Most hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init` — `stop-check` exits immediately if the config file is absent. The Stop hook checks the `stop_hook_active` flag Claude Code passes in its input (not a file) as a recursion guard, so a self-continuing session never loops.
+Most hooks fail open when `.claude/config.md` is missing, so `flow` is safe to install even before you run `/flow:init`.
 
 Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly or destructive commands" in `SETUP.md`.
 

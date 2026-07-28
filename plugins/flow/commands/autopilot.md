@@ -82,7 +82,9 @@ Run **`/flow:deep-review`** over the sprint diff. Do NOT duplicate its logic her
 
 ## Phase 4: Push
 
-Delegate to **`/flow:pause land`** (it runs CI checks, arms the `.build-check` gate when `stop_check: lint+build`, closes issues, and pushes; then in `solo` mode — already on the default branch — it's just a commit and push, while in `team` mode it opens a PR on the sprint branch Phase 2 created, without merging). If it reports an unfixable failure, fix it autonomously (or skip the offending change and file a ticket) — never ship broken code, never force-push, never `--no-verify`.
+Delegate to **`/flow:pause land`** (it runs CI checks, closes issues, and pushes; then in `solo` mode — already on the default branch — it's just a commit and push, while in `team` mode it opens a PR on the sprint branch Phase 2 created, without merging). If it reports an unfixable failure, fix it autonomously (or skip the offending change and file a ticket) — never ship broken code, never force-push, never `--no-verify`.
+
+`/flow:pause land`'s verification decision (its Step 4) normally asks via `AskUserQuestion` when `stop_check` is unset or `ask` — autopilot can never answer that, so this delegation must never hit it. Per that step's unattended-invocation exception, autopilot treats an unset/`ask` `stop_check` as `always`: verification runs automatically, no question asked. `always`/`never` in config are honoured as configured, also without prompting.
 
 **`team` mode:** the sprint branch stays open as a PR — Phase 5 loops back to Phase 1 without merging it. The next sprint's branch (Phase 2 step 2) is cut from the same point Phase 0 started from, not from the unmerged PR, so sprints stay independent and reviewable rather than stacking.
 

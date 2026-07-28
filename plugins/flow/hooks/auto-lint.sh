@@ -7,10 +7,9 @@
 # This hook only runs commands known to accept a single file path argument
 # (per-file linters/formatters like eslint, prettier, gofmt). Commands that
 # don't — test runners, cargo/go subcommands, package-manager script
-# wrappers like `npm run lint` — are skipped here and left to
-# stop-check.sh, which runs format_cmd/lint_cmd bare (no file args) once
-# over all changed files at the end of the turn. Do not "fix" this by
-# appending the file path to those commands too; it breaks them.
+# wrappers like `npm run lint` — are skipped here entirely; there is no
+# whole-project fallback. Do not "fix" this by appending the file path to
+# those commands too; it breaks them.
 
 set -u
 
