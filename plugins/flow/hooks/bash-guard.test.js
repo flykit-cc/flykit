@@ -161,6 +161,47 @@ test('blocks a destructive command on a later line after normalization', () => {
     assert.equal(runGuard(root, 'echo hi\ngit add -A').status, 2);
 });
 
+// -- fix-round-1: separated rm flags, `git checkout .`/`<ref> -- <path>`, and
+// the `git restore --staged` false positive.
+
+test('blocks rm with recursive and force flags given separately', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'rm -r -f build').status, 2);
+    assert.equal(runGuard(root, 'rm -f -r build').status, 2);
+    assert.equal(runGuard(root, 'rm build -r -f').status, 2);
+});
+
+test('blocks git checkout of the whole tree', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git checkout .').status, 2);
+});
+
+test('blocks git checkout <ref> -- <path>', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git checkout main -- src/a.ts').status, 2);
+});
+
+test('allows ordinary branch switching', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git checkout feature-x').status, 0);
+    assert.equal(runGuard(root, 'git checkout -b new-branch').status, 0);
+});
+
+test('allows git restore --staged (unstage only, worktree untouched)', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git restore --staged src/a.ts').status, 0);
+});
+
+test('blocks git restore --staged --worktree (touches the tree too)', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git restore --staged --worktree src/a.ts').status, 2);
+});
+
+test('blocks git restore --worktree', () => {
+    const root = makeProject('# empty\n');
+    assert.equal(runGuard(root, 'git restore --worktree src/a.ts').status, 2);
+});
+
 test('fails open when jq is unavailable', () => {
     const root = makeProject('# empty\n');
     // A PATH of '/nonexistent' would also hide bash itself, so execFileSync

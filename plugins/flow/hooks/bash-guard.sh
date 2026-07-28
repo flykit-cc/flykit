@@ -117,8 +117,74 @@ unset IFS
 # the sentinel alongside [:space:], or a command on line 2 of a multi-line
 # script would slip past the leading anchor.
 SENTINEL=$'\001'
+# Token boundary within a single statement: space, or the newline sentinel
+# (a real newline is a statement break too — see for_each_statement below —
+# but a command can itself still contain the sentinel, e.g. a line-continued
+# `rm -r \` \n `-f build`, so boundary matching still needs to accept it).
+B="[$SENTINEL[:space:]]"
 DESTRUCTIVE_REASON=""
 matches() { printf '%s' "$NORM_COMMAND" | grep -qE "$1"; }
+
+# Run $2 once per statement in $NORM_COMMAND, passing that one statement as
+# $1 to it; returns 0 (destructive) as soon as any call does. Splitting on
+# every real statement separator — ; & | and the newline sentinel — before
+# correlating flags is what rm/restore need: two independent existence
+# checks run against the *whole* command (e.g. "has an -r flag somewhere"
+# and "has an -f flag somewhere") can each be satisfied by a *different*
+# statement, e.g. `rm -r dir; docker rm -f container` — unrelated commands,
+# neither one destructive on its own. Worse, the same shortcut can produce a
+# false NEGATIVE: `git restore a.ts; git restore --staged b.ts` would read
+# as "restore invoked, and --staged present somewhere" and wrongly allow the
+# first (genuinely destructive) restore. Scoping to one statement at a time
+# closes both directions.
+for_each_statement() {
+    local checker="$1" stmt
+    while IFS= read -r stmt; do
+        [ -n "$stmt" ] || continue
+        if "$checker" "$stmt"; then
+            return 0
+        fi
+    done < <(printf '%s\n' "$NORM_COMMAND" | tr "$SENTINEL;&|" '\n\n\n\n')
+    return 1
+}
+
+# `rm -r -f build`: recursive and force given as separate tokens, not fused
+# into one flag cluster like `-rf`. Within one statement, both a token
+# matching an r-flag and a token matching an f-flag must be present —
+# order and position (before/after the path) don't matter.
+_rm_stmt_destructive() {
+    printf '%s' "$1" | grep -qE '(^| )rm( |$)' || return 1
+    printf '%s' "$1" | grep -qE '(^| )-[a-zA-Z]*[rR][a-zA-Z]*( |$)' || return 1
+    printf '%s' "$1" | grep -qE '(^| )-[a-zA-Z]*f[a-zA-Z]*( |$)'
+}
+rm_is_destructive() { for_each_statement _rm_stmt_destructive; }
+
+# `git checkout .` discards every uncommitted change in the tree — as
+# destructive as `reset --hard`. `git checkout -- <path>` and
+# `git checkout <ref> -- <path>` (one leading ref/branch token, not a flag)
+# restore specific paths from the index/ref and are just as irreversible.
+# Plain `git checkout <branch>` / `git checkout -b <new>` (no `.` argument,
+# no `--`) is switching branches — reversible, routine, must stay allowed.
+checkout_is_destructive() {
+    matches "(^|[;&|]|$B)git${B}+checkout${B}+\\.($B|\$)" && return 0
+    matches "(^|[;&|]|$B)git${B}+checkout(${B}+[^$SENTINEL[:space:]-][^$SENTINEL[:space:]]*)?${B}+--($B|\$)"
+}
+
+# `git restore` only touches the working tree — and is therefore not
+# reversible on its own — when the change actually lands there. Default (no
+# --staged) writes to the tree: BLOCK. --staged alone only unstages, tree
+# untouched: ALLOW. --staged --worktree (or --worktree alone) writes to the
+# tree regardless of --staged: BLOCK. Scoped per-statement (see
+# for_each_statement) so one restore's --staged can't paper over a different,
+# genuinely destructive restore elsewhere in a compound command.
+_restore_stmt_destructive() {
+    printf '%s' "$1" | grep -qE '(^| )git( )+restore( )+[^ ]' || return 1
+    if printf '%s' "$1" | grep -qE '(^| )git( )+restore.*--worktree( |$)'; then
+        return 0
+    fi
+    ! printf '%s' "$1" | grep -qE '(^| )git( )+restore.*--staged( |$)'
+}
+restore_is_destructive() { for_each_statement _restore_stmt_destructive; }
 
 if matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+add[$SENTINEL[:space:]]+(-A|--all|-u|\\.)([$SENTINEL[:space:]]|\$)"; then
     DESTRUCTIVE_REASON="blanket staging sweeps up files you parked — stage named paths instead"
@@ -126,11 +192,11 @@ elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+commit[$SENT
     DESTRUCTIVE_REASON="\`git commit -a\` stages every tracked change — stage named paths instead"
 elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+reset[$SENTINEL[:space:]]+.*--hard"; then
     DESTRUCTIVE_REASON="\`git reset --hard\` discards uncommitted work irreversibly"
-elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+checkout[$SENTINEL[:space:]]+--[$SENTINEL[:space:]]"; then
+elif checkout_is_destructive; then
     DESTRUCTIVE_REASON="this discards uncommitted changes to those paths irreversibly"
-elif matches "(^|[;&|]|[$SENTINEL[:space:]])git[$SENTINEL[:space:]]+restore[$SENTINEL[:space:]]+(--staged[$SENTINEL[:space:]]+)?[^-]"; then
+elif restore_is_destructive; then
     DESTRUCTIVE_REASON="this discards uncommitted changes to those paths irreversibly"
-elif matches "(^|[;&|]|[$SENTINEL[:space:]])rm[$SENTINEL[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR])"; then
+elif matches "(^|[;&|]|[$SENTINEL[:space:]])rm[$SENTINEL[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR])" || rm_is_destructive; then
     DESTRUCTIVE_REASON="recursive force-delete is irreversible"
 fi
 
