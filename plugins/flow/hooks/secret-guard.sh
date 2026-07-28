@@ -30,12 +30,52 @@ case "$TOOL" in
     Bash)
         CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
         [ -n "$CMD" ] || exit 0
-        SECRET_RE="$(flow_secret_regex)"
-        [ -n "$SECRET_RE" ] || exit 0
-        # Only trip when a *reader* command targets a secret-looking path.
-        READER_RE='(^|[^[:alnum:]])(cat|head|tail|less|more|grep|egrep|rg|od|xxd|strings|nl|awk|sed|dotenv|base64)([^[:alnum:]]|$)'
-        if printf '%s' "$CMD" | grep -Eq "$READER_RE" && printf '%s' "$CMD" | grep -Eq "$SECRET_RE"; then
-            echo '[flow secret-guard] Blocked: reading secret/.env files via shell is disabled (defense-in-depth).' >&2
+        # Only trip when a *reader* command is given an argument that looks
+        # like a path to a secret file. We used to grep the whole command
+        # string against an unanchored secret regex, which blocked anything
+        # merely *mentioning* a secret glob as a substring — `jq .key` or
+        # `grep -rn secret src/` have nothing to do with reading .env/.key
+        # files but got caught anyway. Instead: split the pipeline into
+        # segments, and for each segment whose leading command is a known
+        # reader, test its non-flag, path-shaped arguments with the same
+        # anchored `flow_path_is_secret` the Read branch above already uses.
+        READER_RE='^(cat|head|tail|less|more|grep|egrep|rg|od|xxd|strings|nl|awk|sed|dotenv|base64)$'
+        BLOCKED=""
+        # Best-effort, defense-in-depth only: split on shell list/pipe
+        # separators. This is lexical, not a real shell parser — it never
+        # evals the command, so command substitutions in it are never
+        # executed by this check.
+        while IFS= read -r SEGMENT; do
+            [ -n "$SEGMENT" ] || continue
+            # `read -ra` performs plain IFS word-splitting — no execution.
+            read -ra WORDS <<< "$SEGMENT" || continue
+            [ "${#WORDS[@]}" -gt 0 ] || continue
+            CMDNAME="${WORDS[0]##*/}"
+            printf '%s' "$CMDNAME" | grep -Eq "$READER_RE" || continue
+            for ((i = 1; i < ${#WORDS[@]}; i++)); do
+                TOK="${WORDS[$i]}"
+                case "$TOK" in
+                    -*) continue ;;  # option flag, not a path argument
+                esac
+                # Strip one layer of matching surrounding quotes left over
+                # from the naive word-split.
+                TOK="${TOK%\"}"; TOK="${TOK#\"}"
+                TOK="${TOK%\'}"; TOK="${TOK#\'}"
+                # Only test tokens that look path-shaped (has a path
+                # separator or a file extension). A bare word like `secret`
+                # or `api_key` is a grep pattern, not a path, and must not
+                # trip the *secret* glob.
+                case "$TOK" in
+                    */*|*.*)
+                        if flow_path_is_secret "$TOK"; then
+                            BLOCKED="$TOK"
+                        fi
+                        ;;
+                esac
+            done
+        done < <(printf '%s\n' "$CMD" | tr '|&;' '\n')
+        if [ -n "$BLOCKED" ]; then
+            printf '[flow secret-guard] Blocked: "%s" looks like a secret file (defense-in-depth).\n' "$BLOCKED" >&2
             exit 2
         fi
         ;;

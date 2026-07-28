@@ -63,14 +63,23 @@ flow_secret_globs() {
     fi
 }
 
-# Build an ERE that matches any secret glob, for grepping a shell command line.
-# Converts a few glob metachars to regex. Best-effort; defense-in-depth only.
+# Build an ERE that matches any secret glob, for grepping a *list of paths*
+# (one per line, e.g. `git diff --cached --name-only`) — not a shell command
+# string; see hooks/secret-guard.sh for that case, which tests individual
+# tokens against flow_path_is_secret instead. Each glob is anchored to a
+# whole path component at the end of the line, so `*.key` only matches a
+# basename actually *ending* in `.key` — not any path that merely contains
+# the substring, which used to false-positive on e.g. `src/private.key.ts`
+# (extension `.ts`, `.key` only appears mid-name). Converts a few glob
+# metachars to regex. Best-effort; defense-in-depth only.
 flow_secret_regex() {
     local glob out=""
     for glob in $(flow_secret_globs); do
-        # Escape regex specials, then translate glob * and . back.
+        # Escape regex specials, then translate glob * (confined to one path
+        # component, i.e. it does not cross a `/`).
         local re
-        re="$(printf '%s' "$glob" | sed -E 's/[].[^$()+{}|\\]/\\&/g; s/\*/[^[:space:]]*/g')"
+        re="$(printf '%s' "$glob" | sed -E 's/[].[^$()+{}|\\]/\\&/g; s/\*/[^\/]*/g')"
+        re="(^|/)${re}\$"
         if [ -z "$out" ]; then out="$re"; else out="$out|$re"; fi
     done
     printf '%s' "$out"

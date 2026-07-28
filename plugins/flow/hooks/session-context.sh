@@ -29,9 +29,19 @@ CHANGED=$(git -C "$PROJECT_DIR" status --porcelain 2>/dev/null | wc -l | tr -d '
 GOAL=""
 PROGRESS_FILE="$PROJECT_DIR/session-progress.md"
 if [ -f "$PROGRESS_FILE" ]; then
-    # First line matching `Goal:` (case-insensitive), trimmed.
-    GOAL=$(grep -i -m1 '^[[:space:]]*-\?[[:space:]]*Goal:' "$PROGRESS_FILE" 2>/dev/null \
-        | sed -E 's/^[^:]*:[[:space:]]*//' | head -c 200)
+    # /flow:continue writes the goal under a `## Goal` markdown heading (see
+    # pause-helpers.sh's trim-or-delete-progress, which parses the same
+    # shape), not a `Goal:` line — so look for the first non-empty line
+    # under that heading first. Keep the old colon-form grep as a fallback
+    # so session-progress.md files written before this heading format still
+    # surface a goal.
+    GOAL=$(awk '/^#+ *Goal/{flag=1; next} /^#+ /{flag=0} flag && NF{print; exit}' "$PROGRESS_FILE" 2>/dev/null \
+        | head -c 200)
+    if [ -z "$GOAL" ]; then
+        # First line matching `Goal:` (case-insensitive), trimmed.
+        GOAL=$(grep -i -m1 '^[[:space:]]*-\?[[:space:]]*Goal:' "$PROGRESS_FILE" 2>/dev/null \
+            | sed -E 's/^[^:]*:[[:space:]]*//' | head -c 200)
+    fi
 fi
 
 if [ -n "$GOAL" ]; then
