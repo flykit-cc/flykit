@@ -61,7 +61,42 @@ function copyIfMissing(src, dest) {
     return { created: true, path: dest };
 }
 
+/**
+ * Add a marked section to `dest`, creating the file if absent.
+ *
+ * Idempotent: a file that already contains the marker is left untouched, so
+ * `init` can be re-run safely. Never rewrites content outside the markers —
+ * the user's own notes are theirs.
+ *
+ * @returns {'created'|'appended'|'present'}
+ */
+function appendSection(dest, marker, body) {
+    const begin = `<!-- ${marker}:begin -->`;
+    const end = `<!-- ${marker}:end -->`;
+    const block = `${begin}\n${body.trim()}\n${end}\n`;
+
+    if (!fs.existsSync(dest)) {
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, block);
+        return 'created';
+    }
+
+    const current = fs.readFileSync(dest, 'utf8');
+    if (current.includes(begin)) return 'present';
+
+    const sep = current.endsWith('\n') ? '\n' : '\n\n';
+    fs.appendFileSync(dest, `${sep}${block}`);
+    return 'appended';
+}
+
 function report(label, result) {
+    // appendSection returns a plain 'created'|'appended'|'present' string;
+    // copyIfMissing/ensureDir return a { created, path, missingSource? } object.
+    if (typeof result === 'string') {
+        const symbol = result === 'present' ? '·' : '+';
+        process.stdout.write(`  ${symbol} ${label}: ${result}\n`);
+        return;
+    }
     if (result.missingSource) {
         process.stdout.write(`  ! ${label}: source template missing (${result.path})\n`);
         return;
@@ -94,7 +129,13 @@ function main() {
     const issuesDir = path.join(target, 'issues');
 
     report('.claude/config.md', copyIfMissing(configSrc, configDest));
-    report('CLAUDE.md', copyIfMissing(claudeSrc, claudeDest));
+    // CLAUDE.md usually already exists, so append a marked section rather than
+    // skipping — otherwise an existing project never receives flow's conventions.
+    if (fs.existsSync(claudeSrc)) {
+        report('CLAUDE.md', appendSection(claudeDest, 'flow', fs.readFileSync(claudeSrc, 'utf8')));
+    } else {
+        report('CLAUDE.md', { created: false, path: claudeSrc, missingSource: true });
+    }
     report('issues/', ensureDir(issuesDir));
 
     process.stdout.write('\n[flow init] Done. Next: edit .claude/config.md to fill in your project commands.\n');
@@ -105,4 +146,4 @@ if (require.main === module) {
     process.exit(main());
 }
 
-module.exports = { main, parseArgs, copyIfMissing, ensureDir };
+module.exports = { main, parseArgs, copyIfMissing, ensureDir, appendSection };
