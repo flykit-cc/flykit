@@ -6,7 +6,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { copyIfMissing, ensureDir, appendSection, parseArgs, main } = require('./init');
+const {
+    copyIfMissing, ensureDir, appendSection, parseArgs, main,
+    detectStackCommands, applyStackCommands, pmPrefix,
+} = require('./init');
 
 function mkSandbox() {
     return fs.mkdtempSync(path.join(os.tmpdir(), 'flow-test-'));
@@ -216,4 +219,188 @@ test('appendSection: is a no-op ("present") when the marker already exists, leav
     const text = fs.readFileSync(dest, 'utf8');
     assert.equal(text, '# Notes\n\n<!-- flow:begin -->\nOld body.\n<!-- flow:end -->\n', 'file left byte-for-byte untouched');
     assert.doesNotMatch(text, /New body/, 'must not overwrite with new body when marker is already present');
+});
+
+// --- Stack-command detection (Task: init auto-detects stack commands) ---
+
+test('pmPrefix: pnpm-lock.yaml selects pnpm', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'pnpm-lock.yaml'), '');
+    assert.equal(pmPrefix(sandbox), 'pnpm');
+});
+
+test('pmPrefix: yarn.lock selects yarn', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'yarn.lock'), '');
+    assert.equal(pmPrefix(sandbox), 'yarn');
+});
+
+test('pmPrefix: bun.lockb selects bun', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'bun.lockb'), '');
+    assert.equal(pmPrefix(sandbox), 'bun');
+});
+
+test('pmPrefix: defaults to "npm run" when no lockfile is present', () => {
+    const sandbox = mkSandbox();
+    assert.equal(pmPrefix(sandbox), 'npm run');
+});
+
+test('detectStackCommands: pnpm project maps lint/test/build/dev scripts by exact key', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'pnpm-lock.yaml'), '');
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({
+        scripts: { lint: 'eslint .', test: 'vitest run', build: 'vite build', dev: 'vite' },
+    }));
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.lint_cmd, 'pnpm lint');
+    assert.equal(detected.test_cmd, 'pnpm test');
+    assert.equal(detected.build_cmd, 'pnpm build');
+    assert.equal(detected.dev_cmd, 'pnpm dev');
+    assert.equal(detected.typecheck_cmd, '', 'no typecheck script present, must stay blank');
+    assert.equal(detected.format_cmd, '', 'no format script present, must stay blank');
+});
+
+test('detectStackCommands: yarn project uses "yarn <script>" with no "run"', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'yarn.lock'), '');
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({
+        scripts: { lint: 'eslint .', typecheck: 'tsc --noEmit' },
+    }));
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.lint_cmd, 'yarn lint');
+    assert.equal(detected.typecheck_cmd, 'yarn typecheck');
+});
+
+test('detectStackCommands: npm project (no lockfile) uses "npm run <script>"', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({
+        scripts: { format: 'prettier --write .' },
+    }));
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.format_cmd, 'npm run format');
+});
+
+test('detectStackCommands: type-check (hyphenated) script also maps to typecheck_cmd', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({
+        scripts: { 'type-check': 'tsc --noEmit' },
+    }));
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.typecheck_cmd, 'npm run type-check');
+});
+
+test('detectStackCommands: Go project fills lint/test/build with go tooling', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'go.mod'), 'module example.com/foo\n');
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.lint_cmd, 'go vet ./...');
+    assert.equal(detected.test_cmd, 'go test ./...');
+    assert.equal(detected.build_cmd, 'go build ./...');
+    assert.equal(detected.dev_cmd, '', 'go has no dev-server convention, must stay blank');
+});
+
+test('detectStackCommands: Rust project fills lint/test/build with cargo tooling', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'Cargo.toml'), '[package]\nname = "foo"\n');
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.lint_cmd, 'cargo clippy');
+    assert.equal(detected.test_cmd, 'cargo test');
+    assert.equal(detected.build_cmd, 'cargo build --release');
+});
+
+test('detectStackCommands: Python project with ruff.toml and pytest.ini', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'ruff.toml'), 'line-length = 100\n');
+    fs.writeFileSync(path.join(sandbox, 'pytest.ini'), '[pytest]\n');
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.lint_cmd, 'ruff check .');
+    assert.equal(detected.test_cmd, 'pytest');
+});
+
+test('detectStackCommands: Python project with pyproject.toml [tool.ruff]/[tool.pytest]', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'pyproject.toml'), '[tool.ruff]\nline-length = 100\n\n[tool.pytest.ini_options]\n');
+
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.lint_cmd, 'ruff check .');
+    assert.equal(detected.test_cmd, 'pytest');
+});
+
+test('detectStackCommands: nothing detectable — every key present but blank', () => {
+    const sandbox = mkSandbox();
+    const detected = detectStackCommands(sandbox);
+    for (const key of ['dev_cmd', 'lint_cmd', 'typecheck_cmd', 'build_cmd', 'test_cmd', 'format_cmd']) {
+        assert.ok(Object.prototype.hasOwnProperty.call(detected, key), `${key} must be present`);
+        assert.equal(detected[key], '', `${key} must be blank, not a placeholder`);
+    }
+});
+
+test('applyStackCommands: fills placeholder lines with detected values, leaves rest blank', () => {
+    const template = [
+        '- dev_cmd: {COMMAND_TO_START_DEV_SERVER}',
+        '- lint_cmd: {COMMAND_TO_LINT}',
+        '- typecheck_cmd: {COMMAND_TO_TYPECHECK_OR_BLANK}',
+        '- build_cmd: {COMMAND_TO_BUILD_PRODUCTION}',
+        '- test_cmd: {COMMAND_TO_RUN_TESTS}',
+        '- format_cmd: {COMMAND_TO_FORMAT_CODE}',
+    ].join('\n');
+
+    const detected = {
+        dev_cmd: 'pnpm dev', lint_cmd: 'pnpm lint', typecheck_cmd: '',
+        build_cmd: 'pnpm build', test_cmd: 'pnpm test', format_cmd: '',
+    };
+    const out = applyStackCommands(template, detected);
+
+    assert.match(out, /^- dev_cmd: pnpm dev$/m);
+    assert.match(out, /^- lint_cmd: pnpm lint$/m);
+    assert.match(out, /^- typecheck_cmd:$/m, 'blank value leaves no trailing space or placeholder');
+    assert.match(out, /^- format_cmd:$/m);
+    assert.doesNotMatch(out, /\{/, 'no placeholder braces must survive');
+});
+
+test('main: end-to-end — pnpm project gets detected commands written into .claude/config.md, no placeholders', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'pnpm-lock.yaml'), '');
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({
+        scripts: { lint: 'eslint .', test: 'vitest run' },
+    }));
+
+    runInit(target);
+
+    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    assert.match(configText, /^- lint_cmd: pnpm lint$/m);
+    assert.match(configText, /^- test_cmd: pnpm test$/m);
+    assert.doesNotMatch(configText, /\{COMMAND_TO/, 'no unfilled placeholders must remain');
+});
+
+test('main: end-to-end — project with nothing detectable gets blank keys, no placeholders', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+
+    runInit(target);
+
+    const configText = fs.readFileSync(path.join(target, '.claude', 'config.md'), 'utf8');
+    assert.match(configText, /^- lint_cmd:$/m);
+    assert.match(configText, /^- test_cmd:$/m);
+    assert.doesNotMatch(configText, /\{COMMAND_TO/, 'no unfilled placeholders must remain');
+});
+
+test('main: end-to-end — re-running init does not touch an already-filled-in config.md', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target);
+
+    const configDest = path.join(target, '.claude', 'config.md');
+    fs.writeFileSync(configDest, 'USER EDITED CONFIG');
+
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ scripts: { lint: 'eslint .' } }));
+    runInit(target);
+
+    assert.equal(fs.readFileSync(configDest, 'utf8'), 'USER EDITED CONFIG', 'existing user config must never be rewritten');
 });
