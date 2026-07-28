@@ -47,6 +47,8 @@ function parseArgs(argv) {
             args.pmGithubRepo = argv[++i];
         } else if (a === '--pm-linear-team') {
             args.pmLinearTeam = argv[++i];
+        } else if (a === '--project-name') {
+            args.projectName = argv[++i];
         } else if (a === '--help' || a === '-h') {
             args.help = true;
         }
@@ -66,6 +68,7 @@ function printHelp() {
         '  --pm-github-owner    GitHub repo owner, required when pm-backend=github\n' +
         '  --pm-github-repo     GitHub repo name, required when pm-backend=github\n' +
         '  --pm-linear-team     Linear team key, required when pm-backend=linear\n' +
+        '  --project-name       Project name for CLAUDE.md (default: package.json name, else dir basename)\n' +
         '  --help, -h           Show this help\n'
     );
 }
@@ -233,6 +236,115 @@ function applyPmFields(text, opts) {
     return out;
 }
 
+function readPkg(target) {
+    const pkgPath = path.join(target, 'package.json');
+    if (!fs.existsSync(pkgPath)) return null;
+    try {
+        return JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    } catch (e) {
+        return null; // Malformed package.json — treat as absent.
+    }
+}
+
+/**
+ * Detect the project's name for CLAUDE.md: an explicit override (the
+ * --project-name flag) wins, then package.json's `name`, then the target
+ * directory's own basename — always something real, never a placeholder.
+ */
+function detectProjectName(target, override) {
+    if (override) return override;
+    const pkg = readPkg(target);
+    if (pkg && pkg.name) return pkg.name;
+    return path.basename(target);
+}
+
+/**
+ * Detect language + runtime from whichever manifest is on disk. Never
+ * invents a claim that isn't evidenced by a file — comes back blank when
+ * nothing matches.
+ */
+function detectLanguageRuntime(target) {
+    const pkg = readPkg(target);
+    if (pkg) {
+        const language = fs.existsSync(path.join(target, 'tsconfig.json')) ? 'TypeScript' : 'JavaScript';
+        return { language, runtime: 'Node.js' };
+    }
+    if (fs.existsSync(path.join(target, 'go.mod'))) {
+        return { language: 'Go', runtime: 'Go' };
+    }
+    if (fs.existsSync(path.join(target, 'Cargo.toml'))) {
+        return { language: 'Rust', runtime: 'Rust' };
+    }
+    if (fs.existsSync(path.join(target, 'pyproject.toml')) || fs.existsSync(path.join(target, 'requirements.txt'))) {
+        return { language: 'Python', runtime: 'Python' };
+    }
+    return { language: '', runtime: '' };
+}
+
+/**
+ * Detect the web/service framework from a dependency or manifest string
+ * that unambiguously names it. Returns '' rather than guess when nothing
+ * on disk evidences a specific framework.
+ */
+function detectFramework(target) {
+    const pkg = readPkg(target);
+    if (pkg) {
+        const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
+        if (deps.next) return 'Next.js';
+        if (deps.react) return 'React';
+        if (deps.vue) return 'Vue';
+        if (deps['@nestjs/core']) return 'NestJS';
+        if (deps.fastify) return 'Fastify';
+        if (deps.express) return 'Express';
+        return '';
+    }
+    if (fs.existsSync(path.join(target, 'go.mod'))) {
+        const goMod = fs.readFileSync(path.join(target, 'go.mod'), 'utf8');
+        if (/gin-gonic\/gin/.test(goMod)) return 'Gin';
+        if (/labstack\/echo/.test(goMod)) return 'Echo';
+        return '';
+    }
+    if (fs.existsSync(path.join(target, 'Cargo.toml'))) {
+        const cargo = fs.readFileSync(path.join(target, 'Cargo.toml'), 'utf8');
+        if (/^actix-web/m.test(cargo)) return 'Actix';
+        if (/^axum/m.test(cargo)) return 'Axum';
+        if (/^rocket/m.test(cargo)) return 'Rocket';
+        return '';
+    }
+    const pyproject = fs.existsSync(path.join(target, 'pyproject.toml'))
+        ? fs.readFileSync(path.join(target, 'pyproject.toml'), 'utf8') : '';
+    const requirements = fs.existsSync(path.join(target, 'requirements.txt'))
+        ? fs.readFileSync(path.join(target, 'requirements.txt'), 'utf8') : '';
+    const combined = `${pyproject}\n${requirements}`;
+    if (/django/i.test(combined)) return 'Django';
+    if (/fastapi/i.test(combined)) return 'FastAPI';
+    if (/flask/i.test(combined)) return 'Flask';
+    return '';
+}
+
+/**
+ * Substitute the CLAUDE.md template's `{KEY}` placeholders with detected
+ * values. Anything not detected — or not detectable at all, like
+ * DATABASE_OR_NONE/DEPLOY_TARGET — renders as `_(not set)_`, an honest,
+ * clearly-intentional marker instead of a raw `{PLACEHOLDER}`.
+ */
+function renderClaudeMdTemplate(text, opts) {
+    const substitutions = {
+        PROJECT_NAME: opts.projectName,
+        PROJECT_ROOT: opts.projectRoot,
+        LANGUAGE: opts.language,
+        RUNTIME: opts.runtime,
+        FRAMEWORK: opts.framework,
+        DATABASE_OR_NONE: opts.database,
+        DEPLOY_TARGET: opts.deployTarget,
+    };
+    let out = text;
+    for (const [key, value] of Object.entries(substitutions)) {
+        out = out.split(`{${key}}`).join(value || '_(not set)_');
+    }
+    return out;
+}
+
 function report(label, result) {
     // appendSection returns a plain 'created'|'appended'|'present' string;
     // copyIfMissing/ensureDir return a { created, path, missingSource? } object.
@@ -310,7 +422,17 @@ function main() {
     // CLAUDE.md usually already exists, so append a marked section rather than
     // skipping — otherwise an existing project never receives flow's conventions.
     if (fs.existsSync(claudeSrc)) {
-        report('CLAUDE.md', appendSection(claudeDest, 'flow', fs.readFileSync(claudeSrc, 'utf8')));
+        const { language, runtime } = detectLanguageRuntime(target);
+        const body = renderClaudeMdTemplate(fs.readFileSync(claudeSrc, 'utf8'), {
+            projectName: detectProjectName(target, args.projectName),
+            projectRoot: target,
+            language,
+            runtime,
+            framework: detectFramework(target),
+            database: '',
+            deployTarget: '',
+        });
+        report('CLAUDE.md', appendSection(claudeDest, 'flow', body));
     } else {
         report('CLAUDE.md', { created: false, path: claudeSrc, missingSource: true });
     }
@@ -327,5 +449,6 @@ if (require.main === module) {
 module.exports = {
     main, parseArgs, copyIfMissing, ensureDir, appendSection,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
+    detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
     VALID_WORKFLOW_MODES, VALID_PM_BACKENDS,
 };

@@ -9,6 +9,7 @@ const path = require('path');
 const {
     copyIfMissing, ensureDir, appendSection, parseArgs, main,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
+    detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
 } = require('./init');
 
 function mkSandbox() {
@@ -490,6 +491,221 @@ test('main: invalid --pm-backend exits non-zero and writes nothing', () => {
     const code = runInit(target, ['--pm-backend', 'jira']);
     assert.notEqual(code, 0);
     assert.equal(fs.existsSync(path.join(target, '.claude', 'config.md')), false, 'nothing should be written on validation failure');
+});
+
+// --- CLAUDE.md placeholder substitution (regression: init.js appended the
+// template verbatim, leaving raw {PROJECT_NAME} etc. in the user's file) ---
+
+test('main: CLAUDE.md has zero {UPPERCASE} placeholders for a Node project', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'my-node-app', scripts: {} }));
+
+    runInit(target);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} tokens must remain');
+    assert.match(claudeText, /my-node-app/, 'detected project name from package.json must appear');
+});
+
+test('main: CLAUDE.md has zero {UPPERCASE} placeholders for a Go project', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'go.mod'), 'module example.com/foo\n');
+
+    runInit(target);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} tokens must remain');
+});
+
+test('main: CLAUDE.md has zero {UPPERCASE} placeholders for a bare directory with no manifest', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+
+    runInit(target);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} tokens must remain, even with nothing detectable');
+    assert.match(claudeText, new RegExp(path.basename(target)), 'falls back to the directory basename as project name');
+});
+
+test('main: --project-name overrides the detected/fallback project name', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'wrong-name' }));
+
+    runInit(target, ['--project-name', 'Correct Name']);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.match(claudeText, /Correct Name/);
+});
+
+// --- CLAUDE.md template substitution (regression: /flow:init used to leave raw {PLACEHOLDERS}) ---
+
+test('detectProjectName: reads name from package.json when present', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({ name: 'my-cool-app' }));
+    assert.equal(detectProjectName(sandbox), 'my-cool-app');
+});
+
+test('detectProjectName: falls back to directory basename when no package.json', () => {
+    const sandbox = mkSandbox();
+    assert.equal(detectProjectName(sandbox), path.basename(sandbox));
+});
+
+test('detectProjectName: --project-name override wins over package.json', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({ name: 'my-cool-app' }));
+    assert.equal(detectProjectName(sandbox, 'custom-name'), 'custom-name');
+});
+
+test('detectLanguageRuntime: package.json + tsconfig.json = TypeScript on Node.js', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), '{}');
+    fs.writeFileSync(path.join(sandbox, 'tsconfig.json'), '{}');
+    const { language, runtime } = detectLanguageRuntime(sandbox);
+    assert.equal(language, 'TypeScript');
+    assert.equal(runtime, 'Node.js');
+});
+
+test('detectLanguageRuntime: package.json alone = JavaScript on Node.js', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), '{}');
+    const { language, runtime } = detectLanguageRuntime(sandbox);
+    assert.equal(language, 'JavaScript');
+    assert.equal(runtime, 'Node.js');
+});
+
+test('detectLanguageRuntime: go.mod = Go', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'go.mod'), 'module example.com/foo\n');
+    const { language, runtime } = detectLanguageRuntime(sandbox);
+    assert.equal(language, 'Go');
+    assert.equal(runtime, 'Go');
+});
+
+test('detectLanguageRuntime: Cargo.toml = Rust', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'Cargo.toml'), '[package]\nname = "foo"\n');
+    const { language, runtime } = detectLanguageRuntime(sandbox);
+    assert.equal(language, 'Rust');
+    assert.equal(runtime, 'Rust');
+});
+
+test('detectLanguageRuntime: pyproject.toml = Python', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'pyproject.toml'), '[project]\nname = "foo"\n');
+    const { language, runtime } = detectLanguageRuntime(sandbox);
+    assert.equal(language, 'Python');
+    assert.equal(runtime, 'Python');
+});
+
+test('detectLanguageRuntime: bare directory, nothing detectable, comes back blank', () => {
+    const sandbox = mkSandbox();
+    const { language, runtime } = detectLanguageRuntime(sandbox);
+    assert.equal(language, '');
+    assert.equal(runtime, '');
+});
+
+test('detectFramework: package.json dependency on next => Next.js', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({ dependencies: { next: '^14.0.0', react: '^18.0.0' } }));
+    assert.equal(detectFramework(sandbox), 'Next.js');
+});
+
+test('detectFramework: no evidence returns blank, not a guess', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({ dependencies: {} }));
+    assert.equal(detectFramework(sandbox), '');
+});
+
+test('renderClaudeMdTemplate: fills evidenced fields and marks the rest _(not set)_', () => {
+    const template = [
+        '# {PROJECT_NAME}',
+        '- Language: {LANGUAGE}',
+        '- Framework: {FRAMEWORK}',
+        '- Runtime: {RUNTIME}',
+        '- Database: {DATABASE_OR_NONE}',
+        '- Deploy target: {DEPLOY_TARGET}',
+        '{PROJECT_ROOT}/',
+    ].join('\n');
+
+    const out = renderClaudeMdTemplate(template, {
+        projectName: 'my-app',
+        projectRoot: '/path/to/my-app',
+        language: 'TypeScript',
+        runtime: 'Node.js',
+        framework: '',
+        database: '',
+        deployTarget: '',
+    });
+
+    assert.match(out, /^# my-app$/m);
+    assert.match(out, /^- Language: TypeScript$/m);
+    assert.match(out, /^- Framework: _\(not set\)_$/m);
+    assert.match(out, /^- Runtime: Node\.js$/m);
+    assert.match(out, /^- Database: _\(not set\)_$/m);
+    assert.match(out, /^- Deploy target: _\(not set\)_$/m);
+    assert.match(out, /^\/path\/to\/my-app\/$/m);
+    assert.doesNotMatch(out, /\{[A-Z_]+\}/, 'no raw placeholder must survive');
+});
+
+test('main: end-to-end — CLAUDE.md has zero {UPPERCASE} placeholders for a Node+TypeScript project', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'ts-app' }));
+    fs.writeFileSync(path.join(target, 'tsconfig.json'), '{}');
+
+    runInit(target);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} must remain');
+    assert.match(claudeText, /# ts-app/);
+    assert.match(claudeText, /Language: TypeScript/);
+    assert.match(claudeText, /Runtime: Node\.js/);
+});
+
+test('main: end-to-end — CLAUDE.md has zero {UPPERCASE} placeholders for a Go project', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'go.mod'), 'module example.com/foo\n');
+
+    runInit(target);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} must remain');
+    assert.match(claudeText, /Language: Go/);
+});
+
+test('main: end-to-end — CLAUDE.md has zero {UPPERCASE} placeholders for a bare directory with no manifest', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+
+    runInit(target);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} must remain');
+    assert.match(claudeText, new RegExp(`# ${path.basename(target)}`));
+    assert.match(claudeText, /Language: _\(not set\)_/);
+    assert.match(claudeText, /Database: _\(not set\)_/);
+    assert.match(claudeText, /Deploy target: _\(not set\)_/);
+});
+
+test('main: --project-name overrides both package.json name and directory basename', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'from-package-json' }));
+
+    runInit(target, ['--project-name', 'from-flag']);
+
+    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
+    assert.match(claudeText, /# from-flag/);
+    assert.doesNotMatch(claudeText, /from-package-json/);
+});
+
+test('main: re-running init never touches an already-filled-in CLAUDE.md (marker already present)', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target);
+
+    const claudeDest = path.join(target, 'CLAUDE.md');
+    const firstRun = fs.readFileSync(claudeDest, 'utf8');
+
+    runInit(target, ['--project-name', 'should-not-apply']);
+
+    assert.equal(fs.readFileSync(claudeDest, 'utf8'), firstRun, 'CLAUDE.md must be untouched on re-run');
 });
 
 test('main: re-running with new PM flags never touches an already-filled-in config.md', () => {

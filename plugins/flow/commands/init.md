@@ -21,6 +21,11 @@ Use `AskUserQuestion`, batched where possible:
 
 Do not ask about dev/lint/typecheck/build/test/format commands — the script detects those.
 
+For the project name, don't ask by default — the script infers it from `package.json`'s
+`name` field, falling back to the directory basename. Only ask via `AskUserQuestion` if
+that default looks wrong (empty, `.`, or a generic scaffold name like `app`/`my-app`/
+`untitled`/`src`), and pass the corrected value as `--project-name`.
+
 ## Step 2: Run the script
 
 ```
@@ -28,7 +33,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/init.js \
   --workflow-mode <answer> \
   --pm-backend <answer> \
   [--pm-github-owner <answer>] [--pm-github-repo <answer>] \
-  [--pm-linear-team <answer>]
+  [--pm-linear-team <answer>] [--project-name <answer, only if asked>]
 ```
 
 Omit a flag entirely rather than passing an empty string. The script never overwrites an
