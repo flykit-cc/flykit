@@ -4,8 +4,8 @@
 #
 # Usage:
 #   continue-helpers.sh check-progress      # exists | missing
-#   continue-helpers.sh progress-age-days   # integer days since session-progress.md mtime
-#   continue-helpers.sh last-log-titles     # last 3 dated titles from session-log.md
+#   continue-helpers.sh progress-age-days   # integer days since .flow/session-progress.md mtime
+#   continue-helpers.sh last-log-titles     # last 3 dated titles from .flow/session-log.md
 #   continue-helpers.sh dev-server-state    # running:<pid> | port-taken:<cwd> | free | no-port
 #   continue-helpers.sh deps-ok             # ok | missing   (alias: node-modules-ok)
 
@@ -16,8 +16,8 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SOURCE_DIR/lib.sh"
 
 REPO_ROOT="$(flow_project_root)"
-PROGRESS="$REPO_ROOT/session-progress.md"
-LOG="$REPO_ROOT/session-log.md"
+PROGRESS="$REPO_ROOT/.flow/session-progress.md"
+LOG="$REPO_ROOT/.flow/session-log.md"
 
 cmd="${1:-}"
 

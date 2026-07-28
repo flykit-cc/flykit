@@ -28,7 +28,7 @@
     },
     {
       "name": "continue",
-      "description": "Resume the last session from session-progress.md exactly where you left off, or start a new one if none exists."
+      "description": "Resume the last session from .flow/session-progress.md exactly where you left off, or start a new one if none exists."
     },
     {
       "name": "pause",

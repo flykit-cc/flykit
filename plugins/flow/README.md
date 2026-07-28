@@ -22,8 +22,8 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | Command              | Purpose                                                                 |
 | -------------------- | ----------------------------------------------------------------------- |
 | `/flow:init`         | One-time setup. Drops config and memory templates into the project.     |
-| `/flow:continue`     | Resume an in-progress session from `session-progress.md`, or start a new one if none exists. |
-| `/flow:pause`        | Snapshot current state to `session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
+| `/flow:continue`     | Resume an in-progress session from `.flow/session-progress.md`, or start a new one if none exists. |
+| `/flow:pause`        | Snapshot current state to `.flow/session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
 | `/flow:audit`        | Dry-run review: lint, typecheck, security pass without shipping.        |
 | `/flow:cleanup`      | Tidy stray branches, stale session files, and `/tmp/flow-session/`.     |
 | `/flow:health`       | Inspect the project's flow setup and report missing pieces.             |
@@ -91,7 +91,7 @@ Most hooks fail open when `.flow/config.md` is missing, so `flow` is safe to ins
 
 Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly or destructive commands" in `SETUP.md`.
 
-The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`. Every invocation ends a session through the same `finish` helper: it writes the session's block to `session-log.md`, then deletes `session-progress.md` only when nothing is left in flight (open tasks keep the file, so the next session resumes them). `land` additionally runs CI checks, closes issues, and rebases + ff-merges onto the default branch.
+The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`. Every invocation ends a session through the same `finish` helper: it writes the session's block to `.flow/session-log.md`, then deletes `.flow/session-progress.md` only when nothing is left in flight (open tasks keep the file, so the next session resumes them). `land` additionally runs CI checks, closes issues, and rebases + ff-merges onto the default branch.
 
 ## Learn more
 

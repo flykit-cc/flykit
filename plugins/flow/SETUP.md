@@ -91,7 +91,7 @@ stop_check: never    # never run them, no prompt
 stop_check: ask       # default — prompt each time
 ```
 
-If verification runs and fails, `/flow:pause` reports the failure and asks whether to fix now or proceed anyway (a checkpoint may save broken WIP; `land` instead asks fix-now-or-abort, since it never ships on a failing build). Either way, the outcome — `passed` / `not run` / `failed (...)` — is written to `session-progress.md` as a `Verification:` line, and `/flow:continue` surfaces it on the next resume if it isn't `passed`.
+If verification runs and fails, `/flow:pause` reports the failure and asks whether to fix now or proceed anyway (a checkpoint may save broken WIP; `land` instead asks fix-now-or-abort, since it never ships on a failing build). Either way, the outcome — `passed` / `not run` / `failed (...)` — is written to `.flow/session-progress.md` as a `Verification:` line, and `/flow:continue` surfaces it on the next resume if it isn't `passed`.
 
 ## 6. Approval for costly or destructive commands
 

@@ -90,7 +90,7 @@ Delegate to **`/flow:pause land`** (it runs CI checks, closes issues, and pushes
 
 ## Phase 5: Cleanup and loop
 
-1. Clear `/tmp/flow-session/*` per `agent-workflow.md`. Do not touch `session-progress.md` — `/flow:pause land` already settled it (deleted if the sprint shipped everything, kept if tasks remain).
+1. Clear `/tmp/flow-session/*` per `agent-workflow.md`. Do not touch `.flow/session-progress.md` — `/flow:pause land` already settled it (deleted if the sprint shipped everything, kept if tasks remain).
 2. **File tickets** for problems discovered during the sprint that were out of scope (tag `blocked` if they need a user decision).
 3. **Capture learnings** (only if `memory_path` is set): if the sprint produced durable cross-session knowledge, write a short memory file under `memory_path` and update its `MEMORY.md` index. Skip routine work.
 4. Output the **Sprint report** (format below).

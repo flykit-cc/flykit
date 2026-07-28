@@ -8,8 +8,8 @@
 #   pause-helpers.sh diff-since-pause              # commits since last pause marker
 #   pause-helpers.sh write-marker                  # record HEAD/branch/timestamp
 #   pause-helpers.sh read-marker                   # echo the previous marker (or empty)
-#   pause-helpers.sh log-block <title-file> <body-file>   # prepend dated block to session-log.md
-#   pause-helpers.sh trim-or-delete-progress       # drop session-progress.md if nothing in flight
+#   pause-helpers.sh log-block <title-file> <body-file>   # prepend dated block to .flow/session-log.md
+#   pause-helpers.sh trim-or-delete-progress       # drop .flow/session-progress.md if nothing in flight
 #   pause-helpers.sh report                        # branch + last commit, for the chat report
 #   pause-helpers.sh drift-check                   # heuristic doc-drift warnings (non-blocking)
 #   pause-helpers.sh save-memory <index> <file>... # append memory files + refresh index
@@ -25,10 +25,10 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SOURCE_DIR/lib.sh"
 
 REPO_ROOT="$(flow_project_root)"
-STATE_DIR="$REPO_ROOT/.claude/state"
+STATE_DIR="$REPO_ROOT/.flow/state"
 MARKER="$STATE_DIR/last-pause"
-PROGRESS="$REPO_ROOT/session-progress.md"
-LOG="$REPO_ROOT/session-log.md"
+PROGRESS="$REPO_ROOT/.flow/session-progress.md"
+LOG="$REPO_ROOT/.flow/session-log.md"
 
 SECRET_RE="$(flow_secret_regex)"
 PRIVATE_RE="$(flow_private_regex)"
@@ -96,9 +96,9 @@ case "$cmd" in
     HAS_PAUSED=$(awk '/^#+ *Paused/{flag=1; next} /^#+ /{flag=0} flag && NF{print; exit}' "$PROGRESS")
     if [ "${OPEN_TASKS:-0}" -eq 0 ] && [ -z "$HAS_GOAL" ] && [ -z "$HAS_PAUSED" ]; then
       rm -f "$PROGRESS"
-      echo "session-progress.md deleted (nothing in flight)"
+      echo ".flow/session-progress.md deleted (nothing in flight)"
     else
-      echo "session-progress.md kept (open=${OPEN_TASKS:-0}, goal=${HAS_GOAL:+y}, paused=${HAS_PAUSED:+y})"
+      echo ".flow/session-progress.md kept (open=${OPEN_TASKS:-0}, goal=${HAS_GOAL:+y}, paused=${HAS_PAUSED:+y})"
     fi
     ;;
 

@@ -32,7 +32,7 @@ HELPERS="${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh"
 "$HELPERS" drift-check         # heuristic doc-drift warnings (non-blocking)
 ```
 
-**No-op fast-exit:** if `changed-files` is empty, `session-progress.md` has no open tasks, and nothing meaningful happened this session, print `Nothing to pause — working tree clean, no session state to save.` and stop.
+**No-op fast-exit:** if `changed-files` is empty, `.flow/session-progress.md` has no open tasks, and nothing meaningful happened this session, print `Nothing to pause — working tree clean, no session state to save.` and stop.
 
 ## Step 4: Verification decision
 
@@ -95,7 +95,7 @@ If `memory_path` is unset, skip memory entirely.
 
 If new top-level directories, new commands, or new conventions were introduced this session, update `$CLAUDE_PROJECT_DIR/CLAUDE.md` to reflect them. Ask the user to confirm changes. Skip for plain `pause`/`pause local`.
 
-## Step 9: Settle session-progress.md
+## Step 9: Settle .flow/session-progress.md
 
 Do this **before** the final commit, not after. Check off the tasks completed this session, then:
 
@@ -127,11 +127,11 @@ Solo mode already shipped via the ff-merge in Step 10 — skip this step entirel
 gh pr create --title "<title>" --body "<PR body>" --fill-first
 ```
 
-Draft the PR body from the `session-progress.md` content captured in Step 9 (Goal, what shipped, key decisions) plus the `/tmp/flow-pause-body` narration. For a non-github `pm_backend`, use the backend's equivalent (e.g. note in the report that Linear/local tracking has no PR concept and the branch was pushed for manual review). Print the PR URL in the final report.
+Draft the PR body from the `.flow/session-progress.md` content captured in Step 9 (Goal, what shipped, key decisions) plus the `/tmp/flow-pause-body` narration. For a non-github `pm_backend`, use the backend's equivalent (e.g. note in the report that Linear/local tracking has no PR concept and the branch was pushed for manual review). Print the PR URL in the final report.
 
 ## Step 11: `land` only — close issues
 
-Read the issues worked in this session from `session-progress.md` (captured before Step 9 trimmed it). For each one not already closed by the commit-message trailer in Step 10, close it explicitly using the commit hash `finish` reported:
+Read the issues worked in this session from `.flow/session-progress.md` (captured before Step 9 trimmed it). For each one not already closed by the commit-message trailer in Step 10, close it explicitly using the commit hash `finish` reported:
 
 - **github**: `gh issue close <num> --comment "Resolved by <branch> / <commit-sha>"`
 - **linear**: use the Linear MCP server to transition the issue to Done

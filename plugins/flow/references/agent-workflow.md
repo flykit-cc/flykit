@@ -49,7 +49,7 @@ Commands push their *mechanics* into shell helpers under `${CLAUDE_PLUGIN_ROOT}/
 - `continue-helpers.sh` — `check-progress`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
 - `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.flow/config.md` (`flow_extract`, `flow_secret_globs`, `flow_dev_port`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
 
-These helpers also touch a few machine-local state files (all under the project, all gitignore-worthy): `session-log.md` (append-only dated blocks) and `.claude/state/last-pause` (the pause marker).
+These helpers also touch a few machine-local state files (all under the project, all gitignore-worthy): `.flow/session-log.md` (append-only dated blocks) and `.claude/state/last-pause` (the pause marker).
 
 ## Shutdown protocol
 

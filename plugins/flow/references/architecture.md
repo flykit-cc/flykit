@@ -19,8 +19,8 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
 
 <your-project>/                      (your project's own state — all gitignore-worthy)
   CLAUDE.md                          project instructions (template-seeded, then grows)
-  session-progress.md                created by /flow:continue (cold start); settled on /flow:pause land — deleted when everything shipped, kept while tasks remain
-  session-log.md                     dated session blocks, newest first (written by /flow:pause, all modes)
+  .flow/session-progress.md                created by /flow:continue (cold start); settled on /flow:pause land — deleted when everything shipped, kept while tasks remain
+  .flow/session-log.md                     dated session blocks, newest first (written by /flow:pause, all modes)
   .claude/state/last-pause           pause marker (HEAD/branch/timestamp)
   .flow/                             machine-local flow state — never commit
   issues/                            only when pm_backend = local
