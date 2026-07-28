@@ -20,7 +20,7 @@ Spawn the `ci-check` agent via the `Agent` tool. It runs the configured commands
 
 If any check fails, stop. Report failures to the user and ask whether to fix now (spawn `coder`) or abort. Do not push on a failing build.
 
-**Arm the build gate.** Before returning control, `touch "$CLAUDE_PROJECT_DIR/.build-check"`. This is a deliberate one-shot gate: the next time the session stops, `stop-check.sh` runs `build_cmd` + `test_cmd` synchronously and blocks if they fail, then removes the marker. It is the safety net that catches anything `ci-check` missed. (Routine stops stay fast — they only ever lint/format in the background.)
+**Arm the build gate — only if the project opted in.** Read `stop_check` from `.claude/config.md`. If it is `lint+build`, `touch "$CLAUDE_PROJECT_DIR/.build-check"` before returning control: the next stop runs `build_cmd` + `test_cmd` synchronously, blocks on failure, and removes the marker. If `stop_check` is `lint` (the default) or `off`, **do not arm it** — builds and test suites cost time, disk, and sometimes money, and routine stops must stay fast.
 
 ## Step 4: Close issues
 
