@@ -28,6 +28,6 @@ Print:
 
 ## Step 5: Suggest next step
 
-If errors remain, suggest `/flow:start` to fix them as a small task, or just spawn a `coder` agent inline if the user agrees.
+If errors remain, suggest `/flow:continue` to fix them as a small task, or just spawn a `general-purpose` agent inline if the user agrees.
 
 Do not commit. Do not push.
