@@ -57,16 +57,21 @@ pm_linear_team: <TEAM_KEY>
 
 (Linear support requires the Linear MCP to be configured separately.)
 
-## 3. Commit `.claude/config.md`
+## 3. Keep `.claude/config.md` out of version control
 
-`config.md` is project-wide truth — commit it so collaborators and your other machines get the same stack setup. If your `.gitignore` ignores `.claude/`, switch to a carve-out:
+flow treats `.claude/` as **private by default** — see `private_globs` in your config. It
+is your personal setup, not project truth, and `/flow:pause` will refuse to stage anything
+matching `private_globs` so it cannot reach a remote by accident.
 
-```gitignore
-.claude/*
-!.claude/config.md
+If you want the file to travel between your own machines, sync it outside git.
+
+If you deliberately want to share stack settings with collaborators, narrow the default:
+
+```
+private_globs: .claude/settings.local.json docs/superpowers .flow/local.md
 ```
 
-(The `.claude/*` form matters: git cannot re-include a file inside a directory ignored with a plain `.claude/` rule.)
+Then commit `.claude/config.md` yourself. flow will no longer block it.
 
 ## 4. (Optional) Enable strict file protection
 
