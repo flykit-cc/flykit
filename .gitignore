@@ -37,3 +37,6 @@ coverage/
 # Plugin runtime data
 data/
 *.log
+
+# Superpowers SDD scratch (plan ledgers, briefs, review packages) — never published
+.superpowers/
