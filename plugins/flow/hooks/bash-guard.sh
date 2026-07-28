@@ -43,10 +43,14 @@ block() {
 }
 
 # Collapse runs of whitespace to a single space and strip quote characters, so
-# `fly   deploy`, `"fly" deploy`, and `fly deploy` all compare equal. Never
-# mutate $COMMAND itself — the block message must show what the user typed.
+# `fly   deploy`, `"fly" deploy`, and `fly deploy` all compare equal. Newlines
+# are translated to a sentinel byte first (not collapsed with other
+# whitespace) so patterns — which never contain a newline — can never match
+# across a line boundary; otherwise `echo fly` + `deploy something` on
+# adjacent lines would falsely join into "fly deploy". Never mutate $COMMAND
+# itself — the block message must show what the user typed.
 normalize() {
-    printf '%s' "$1" | tr -d "\"'" | tr -s '[:space:]' ' '
+    printf '%s' "$1" | tr -d "\"'" | tr '\n\r' '\001\001' | tr -s ' \t' ' '
 }
 
 NORM_COMMAND="$(normalize "$COMMAND")"
