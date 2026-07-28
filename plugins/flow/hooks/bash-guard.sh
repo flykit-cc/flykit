@@ -96,6 +96,16 @@ unset IFS
 # *"git add ."* also matches `git add .gitignore`, which is a named path and
 # perfectly safe. The argument must be the WHOLE token.
 #
+# Scope limit: this hook only ever sees the literal string handed to the Bash
+# tool. It cannot see git commands run inside flow's own helper scripts as
+# child processes — e.g. pause-helpers.sh's `finish` calling `git add -- "$f"`
+# internally never passes through here at all. That is by design: those
+# scripts have their own narrower guards (finish stages named paths one at a
+# time and refuses to commit staged secrets or private paths) rather than
+# needing an `.allow-destructive` carve-out. Do not add one "just in case" —
+# an armed-but-never-consumed marker sits on disk and silently waves through
+# the next unrelated destructive command from anywhere.
+#
 # Matched against NORM_COMMAND (quotes stripped, so `git "add" -A` is caught),
 # not raw $COMMAND. But normalize() turns newlines into the sentinel byte
 # \001, not a character in [[:space:]] — so every boundary class below adds

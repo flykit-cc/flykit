@@ -58,14 +58,9 @@ Edit `session-progress.md` to check off done tasks, refresh `Paused at` and `Nex
 
 ## Step 7: One-shot finish (shell)
 
-Before running `finish`, arm the destructive-action marker. `finish` itself stages files one at a time and commits without `-a`, so it doesn't trip `bash-guard.sh` today — but `land` rebases and force-pushes, and this keeps the pause path future-proof against that gate without needing a per-command carve-out:
-
 ```bash
-mkdir -p "$CLAUDE_PROJECT_DIR/.flow" && touch "$CLAUDE_PROJECT_DIR/.flow/.allow-destructive"
 "$HELPERS" finish /tmp/flow-pause-title /tmp/flow-pause-body "chore: <title>" $MODE_FLAG $CLOSE_ARG
 ```
-
-The marker is one-shot — the hook consumes it on the first matching command. Since `finish` runs as a single Bash-tool invocation, `bash-guard.sh` only ever sees that one command string, not the git calls `finish` makes internally — arming here is a no-op today but keeps the door shut if `finish` grows a destructive call later.
 
 - `$MODE_FLAG`: `--no-push` for `local`, `--land` for `land`, empty otherwise.
 - `$CLOSE_ARG` (only with `land`, and only if this branch closes an issue): `--close "<token>"` where `<token>` is the backend's close keyword you construct from `pm_backend` — e.g. `Closes #42` (github/local) or `Closes ENG-7` (linear). The script never guesses tracker prefixes; you supply the exact token.
