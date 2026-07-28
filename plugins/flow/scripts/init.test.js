@@ -493,50 +493,6 @@ test('main: invalid --pm-backend exits non-zero and writes nothing', () => {
     assert.equal(fs.existsSync(path.join(target, '.claude', 'config.md')), false, 'nothing should be written on validation failure');
 });
 
-// --- CLAUDE.md placeholder substitution (regression: init.js appended the
-// template verbatim, leaving raw {PROJECT_NAME} etc. in the user's file) ---
-
-test('main: CLAUDE.md has zero {UPPERCASE} placeholders for a Node project', () => {
-    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
-    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'my-node-app', scripts: {} }));
-
-    runInit(target);
-
-    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
-    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} tokens must remain');
-    assert.match(claudeText, /my-node-app/, 'detected project name from package.json must appear');
-});
-
-test('main: CLAUDE.md has zero {UPPERCASE} placeholders for a Go project', () => {
-    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
-    fs.writeFileSync(path.join(target, 'go.mod'), 'module example.com/foo\n');
-
-    runInit(target);
-
-    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
-    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} tokens must remain');
-});
-
-test('main: CLAUDE.md has zero {UPPERCASE} placeholders for a bare directory with no manifest', () => {
-    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
-
-    runInit(target);
-
-    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
-    assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} tokens must remain, even with nothing detectable');
-    assert.match(claudeText, new RegExp(path.basename(target)), 'falls back to the directory basename as project name');
-});
-
-test('main: --project-name overrides the detected/fallback project name', () => {
-    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
-    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'wrong-name' }));
-
-    runInit(target, ['--project-name', 'Correct Name']);
-
-    const claudeText = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
-    assert.match(claudeText, /Correct Name/);
-});
-
 // --- CLAUDE.md template substitution (regression: /flow:init used to leave raw {PLACEHOLDERS}) ---
 
 test('detectProjectName: reads name from package.json when present', () => {
