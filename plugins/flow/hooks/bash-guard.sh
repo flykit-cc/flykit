@@ -102,9 +102,14 @@ unset IFS
 # internally never passes through here at all. That is by design: those
 # scripts have their own narrower guards (finish stages named paths one at a
 # time and refuses to commit staged secrets or private paths) rather than
-# needing an `.allow-destructive` carve-out. Do not add one "just in case" —
-# an armed-but-never-consumed marker sits on disk and silently waves through
-# the next unrelated destructive command from anywhere.
+# needing an `.allow-destructive` carve-out. Do not add a speculative arming
+# step to the pause path "just in case" — the marker is one-shot and consumed
+# only by a matching command, so if nothing in that path ever matches (as is
+# the case today), it never gets consumed: it persists on disk as a standing
+# bypass token that silently waves through the next unrelated destructive
+# command, in any later session. If `finish` ever does grow a destructive
+# call, arm the marker immediately before that specific call so it is
+# consumed there — not speculatively at the top of the path.
 #
 # Matched against NORM_COMMAND (quotes stripped, so `git "add" -A` is caught),
 # not raw $COMMAND. But normalize() turns newlines into the sentinel byte
