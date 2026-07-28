@@ -3,7 +3,7 @@
 # Reaps orphan subprocesses left behind by a Bash tool call (dev servers,
 # scanners, docker exec, etc.). Opt-in: only acts when the project sets
 #   reap_orphans: true
-# in .claude/config.md. OFF by default so a deliberately backgrounded dev
+# in .flow/config.md. OFF by default so a deliberately backgrounded dev
 # server started inside a tool call is not killed unexpectedly.
 #
 # Claude Code sets CLAUDE_HOOK_TARGET_PID to the PID that ran the tool; we

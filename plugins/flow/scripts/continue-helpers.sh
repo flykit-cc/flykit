@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # continue-helpers.sh — deterministic shell work for /flow:continue.
-# Stack-agnostic: dev port and commands come from .claude/config.md.
+# Stack-agnostic: dev port and commands come from .flow/config.md.
 #
 # Usage:
 #   continue-helpers.sh check-progress      # exists | missing
