@@ -42,7 +42,7 @@ Print a summary to the user: counts per category and the top items.
 
 While `BREAKS` count > 0 or `SECURITY` count > 0:
 
-1. Spawn a `coder` agent with the unresolved BREAKS + SECURITY items.
+1. Spawn a `general-purpose` agent with the unresolved BREAKS + SECURITY items and instructions to fix exactly those, nothing more.
 2. After it reports done, re-run reviewers (Step 3) over only the files it touched.
 3. Re-synthesize.
 4. Cap at 3 iterations. If still not clean, stop and ask the user how to proceed.
@@ -55,4 +55,4 @@ If any BREAK or SECURITY finding represents a recurring pattern, ask the user wh
 
 ## Step 7: Done
 
-Print final status. Suggest `/flow:push` if everything is clean and the user is ready to ship.
+Print final status. Suggest `/flow:pause land` if everything is clean and the user is ready to ship.

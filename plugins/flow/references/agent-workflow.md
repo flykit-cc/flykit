@@ -8,20 +8,26 @@ The main Claude Code session is the **orchestrator**. It does not write code. It
 
 Agents do the work. Each agent is narrow: it has one job, one input file, one output file. This keeps token budgets predictable and makes failures localized.
 
-If you find the main agent editing source files directly, something has gone wrong — push the work into a `coder` agent.
+If you find the main agent editing source files directly, something has gone wrong — push the work into a `general-purpose` agent.
 
-## The eight agents
+## The agent roster
 
-| Agent | Input | Output | Owns |
+`flow` ships exactly one custom agent — `reviewer` — plus the built-in agents and skills that
+ship with Claude Code. Prefer the built-ins; only a custom agent definition is worth the
+maintenance cost, and `reviewer`'s domain-specific checklist (BREAKS/SECURITY/MINOR, plan
+adherence) earns its keep.
+
+| Agent / skill | Input | Output | Owns |
 |-------|-------|--------|------|
-| investigator | issue or task description | `/tmp/flow-session/investigation.md` | reading code, mapping dependencies, listing relevant files |
-| architect | investigation.md | `/tmp/flow-session/plan.md` | turning facts into a stepwise plan with file-level changes |
-| coder | plan.md (or a finding list) | edits on disk | implementation, including small refactors needed to land cleanly |
-| reviewer | a diff + file list | `/tmp/flow-session/review-<bucket>.md` | classifying findings as BREAKS / SECURITY / MINOR |
-| scout | a search query | `/tmp/flow-session/scout.md` | wide-scope codebase search when the investigator's scope is too narrow |
-| issuer | a finding | issue created on the configured PM backend | writing clean, well-scoped tickets |
-| websearch | a question | `/tmp/flow-session/websearch.md` | external docs, library references, RFCs |
-| ci-check | config.md commands | exit code + stdout/stderr summary | running lint, typecheck, build, test |
+| `Explore` (built-in) | issue or task description, or a search query | inline report | reading code, mapping dependencies, locating symbols/patterns |
+| `superpowers:writing-plans` (skill) | an investigation / requirements | a written plan | turning facts into a stepwise plan with file-level changes |
+| `general-purpose` (built-in) | a plan (or a finding list) | edits on disk | implementation, including small refactors needed to land cleanly |
+| `reviewer` (flow) | a diff + file list | `/tmp/flow-session/review-<bucket>.md` | classifying findings as BREAKS / SECURITY / MINOR |
+| `WebSearch` (built-in tool) | a question | inline synthesis | external docs, library references, RFCs |
+
+CI checks (lint/typecheck/build/test) and issue filing are no longer separate agents — they're
+inline steps in the commands that need them (`/flow:pause land`, `/flow:audit`), reading the
+commands straight from `config.md`.
 
 ## Handoff via files
 
@@ -33,36 +39,36 @@ Convention:
 
 - One file per phase
 - Markdown with a clear top-level structure (each agent's prompt enforces it)
-- The orchestrator is responsible for cleaning up `/tmp/flow-session/` at session boundaries (`/flow:start` clears it, `/flow:push` clears it after success)
+- The orchestrator is responsible for cleaning up `/tmp/flow-session/` at session boundaries (a cold `/flow:continue` clears it, `/flow:pause land` clears it after success)
 
 ## Deterministic helper layer
 
 Commands push their *mechanics* into shell helpers under `${CLAUDE_PLUGIN_ROOT}/scripts/` so the LLM only narrates and decides. Each helper is a black-box CLI with subcommands that print results to stdout — no tokens spent on git plumbing.
 
-- `pause-helpers.sh` — `changed-files`, `diff-since-pause`, `write-marker`/`read-marker`, `log-block`, `trim-or-delete-progress`, `drift-check`, `save-memory`, `finish`. Used by `/flow:pause`.
+- `pause-helpers.sh` — `changed-files`, `diff-since-pause`, `write-marker`/`read-marker`, `log-block`, `trim-or-delete-progress`, `drift-check`, `save-memory`, `finish`. Used by `/flow:pause` (all modes, including `land`).
 - `continue-helpers.sh` — `check-progress`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
 - `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.claude/config.md` (`flow_extract`, `flow_secret_globs`, `flow_dev_port`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
 
-These helpers also touch a few machine-local state files (all under the project, all gitignore-worthy): `session-log.md` (append-only dated blocks), `.claude/state/last-pause` (the pause marker), `.claude/.stop-check.log` (background lint output), and `.build-check` (the one-shot build-gate marker armed by `/flow:push`).
+These helpers also touch a few machine-local state files (all under the project, all gitignore-worthy): `session-log.md` (append-only dated blocks), `.claude/state/last-pause` (the pause marker), `.claude/.stop-check.log` (background lint output), and `.build-check` (the one-shot build-gate marker armed by `/flow:pause land`).
 
 ## Shutdown protocol
 
-Long-running agents (typically `coder` in a multi-file change) are shut down two ways, used together:
+Long-running agents (typically `general-purpose` in a multi-file change) are shut down two ways, used together:
 
 1. The orchestrator sends `shutdown_request` via `SendMessage` to a named running agent the moment it reports — this is how `/flow:autopilot` keeps the team lean.
 2. As a fallback for agents that poll the filesystem, the orchestrator writes `/tmp/flow-session/shutdown_request`. A polling agent then finishes the current edit (no half-written files), flushes its handoff file, and exits cleanly.
 
-`/flow:pause` and `/flow:push` create the shutdown_request file and wait up to 30 seconds before proceeding. This is best-effort — agents that don't poll will simply finish at their own pace.
+`/flow:pause` (all modes) creates the shutdown_request file and waits up to 30 seconds before proceeding. This is best-effort — agents that don't poll will simply finish at their own pace.
 
 > Note for autopilot: do NOT use `TeamCreate` / `TeamDelete` / `TaskCreate` / `TaskUpdate` to manage agents. They write to `~/.claude/` and reset `bypassPermissions`, which breaks `mode: "auto"` autonomy. Spawn agents directly with the `Agent` tool and shut them down with `SendMessage`.
 
-## File ownership for parallel coders
+## File ownership for parallel implementers
 
-In Agent Team mode, multiple `coder` agents run in parallel. The hard rule: **each coder owns a disjoint set of files**.
+In Agent Team mode (and in `/flow:autopilot`), multiple `general-purpose` agents run in parallel. The hard rule: **each one owns a disjoint set of files**.
 
-The orchestrator partitions the planned changes by file and assigns each set to one coder. No two coders may write the same file. If the plan can't be partitioned this way (e.g. a single large file needs many changes), fall back to a single coder for that file.
+The orchestrator partitions the planned changes by file and assigns each set to one agent. No two agents may write the same file. If the plan can't be partitioned this way (e.g. a single large file needs many changes), fall back to a single agent for that file.
 
-This rule replaces the need for any locking or merge logic. If two coders want to edit the same file, the partition was wrong — re-plan.
+This rule replaces the need for any locking or merge logic. If two agents want to edit the same file, the partition was wrong — re-plan.
 
 ## Errors and retries
 

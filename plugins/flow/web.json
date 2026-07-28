@@ -4,10 +4,10 @@
   "authorUrl": "https://github.com/kaiomp",
   "categories": ["Productivity", "Workflow", "DevOps"],
   "tagline": "An opinionated AI dev workflow for Claude Code — session lifecycle, orchestrated agents, and deep reviews that work in any repo.",
-  "description": "Flow packages a battle-tested workflow for shipping software with Claude Code. It wires up eleven slash commands, eight specialized agents, and a handful of hooks so every session starts, runs, and ships consistently — while staying stack-agnostic by reading project specifics from a per-repo config.md.",
+  "description": "Flow packages a battle-tested workflow for shipping software with Claude Code. It wires up nine slash commands, a focused reviewer agent on top of Claude Code's built-in agents, and a handful of hooks so every session starts, runs, and ships consistently — while staying stack-agnostic by reading project specifics from a per-repo config.md.",
   "features": [
-    "Eleven slash commands covering the full session lifecycle: init, start, continue, pause, push, plus autonomous autopilot",
-    "Eight specialized agents (investigator, architect, coder, reviewer, scout, issuer, websearch, ci-check) coordinated by a main orchestrator",
+    "Nine slash commands covering the full session lifecycle: init, continue (cold-starts or resumes), pause (including a land mode that ships), plus autonomous autopilot",
+    "One focused reviewer agent, layered on Claude Code's built-in Explore and general-purpose agents plus the writing-plans skill, coordinated by a main orchestrator",
     "Autopilot: an autonomous multi-sprint loop that spawns a non-overlapping agent team, deep-reviews, ships, and self-generates work via audit",
     "Project-agnostic: dev/lint/test/build commands come from your repo's .claude/config.md",
     "Deterministic shell helpers + a fast-by-default Stop hook with a one-shot build/test gate at deliberate push points",
@@ -27,20 +27,12 @@
       "description": "Bootstrap a new project with .claude/config.md and CLAUDE.md tailored to your stack."
     },
     {
-      "name": "start",
-      "description": "Begin a session: load issues, pick work, choose a mode, and route through the agent pipeline."
-    },
-    {
       "name": "continue",
-      "description": "Resume the last session from session-progress.md exactly where you left off."
+      "description": "Resume the last session from session-progress.md exactly where you left off, or start a new one if none exists."
     },
     {
       "name": "pause",
-      "description": "Save WIP, shut down agents cleanly, and commit a checkpoint without pushing."
-    },
-    {
-      "name": "push",
-      "description": "Finalize: run CI checks, close issues, update docs, commit, and push (or open a PR in team mode)."
+      "description": "Save WIP and shut down agents cleanly; 'land' mode finalizes: CI checks, issue closing, commit, push, and ff-merge."
     },
     {
       "name": "audit",

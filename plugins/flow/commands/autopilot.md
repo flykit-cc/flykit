@@ -4,7 +4,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, Send
 ---
 # /flow:autopilot
 
-Fully autonomous development loop. Picks issues, spawns a non-overlapping agent team, implements, reviews, pushes, and repeats — until stopped or the codebase is clean. Built on flow's existing agent roster (`investigator`, `architect`, `coder`, `reviewer`, `issuer`) and the file-ownership contract in `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
+Fully autonomous development loop. Picks issues, spawns a non-overlapping agent team, implements, reviews, pushes, and repeats — until stopped or the codebase is clean. Built on the built-in `Explore` and `general-purpose` agents, the `reviewer` agent, the `superpowers:writing-plans` skill, and the file-ownership contract in `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
 
 ## Usage
 
@@ -50,8 +50,8 @@ Read the project's **Known Pitfalls** from `known_pitfalls_path`. Keep the full 
    - **linear**: Linear MCP list-issues, filtered to `pm_linear_team`
    - **local**: read frontmatter of files in `$CLAUDE_PROJECT_DIR/issues/`
 2. **Batch a sprint** with judgment: prioritize by label weight (high > medium > low), group interdependent issues into one sprint, and identify what can run in parallel (different parts of the codebase).
-3. **Plan the team**: decide how many `coder` agents and how to split work. Small issues can share a coder; large features get their own.
-4. **Plan file ownership**: every coder gets a STRICT, non-overlapping set of files it may create or modify. No two coders touch the same file. If two issues share files, they go to the same coder. This replaces all locking — see `agent-workflow.md`.
+3. **Plan the team**: decide how many `general-purpose` implementers and how to split work. Small issues can share one; large features get their own.
+4. **Plan file ownership**: every implementer gets a STRICT, non-overlapping set of files it may create or modify. No two implementers touch the same file. If two issues share files, they go to the same implementer. This replaces all locking — see `agent-workflow.md`.
 5. Write the sprint plan to `$CLAUDE_PROJECT_DIR/session-progress.md` and proceed immediately (no approval).
 
 ## Phase 2: Implementation
@@ -59,19 +59,20 @@ Read the project's **Known Pitfalls** from `known_pitfalls_path`. Keep the full 
 1. **Claim issues**: github → `gh issue edit <n> --add-assignee @me`; linear → assign via MCP; local → add `status: in-progress` to the file.
 2. **team mode only**: create the sprint branch — `git checkout -b flow/sprint-<n>-<slug>`.
 3. **Run the pipeline per issue group.** For each group, drive flow's normal chain via the `Agent` tool, handing off through `/tmp/flow-session/`:
-   - `investigator` → `/tmp/flow-session/investigation-<group>.md`
-   - `architect` → `/tmp/flow-session/plan-<group>.md`
-   - then spawn the **`coder` agents in parallel** (one per file-ownership set).
-4. **Every coder spawn prompt MUST include, verbatim:**
-   - The issue text (`gh issue view <n>` / MCP / local file) and the architect's plan.
+   - **`Explore`** — map the relevant code, write findings to `/tmp/flow-session/investigation-<group>.md`
+   - **`superpowers:writing-plans`** skill — turn the investigation into an ordered plan, write it to `/tmp/flow-session/plan-<group>.md`
+   - then spawn the **`general-purpose` agents in parallel** (one per file-ownership set) to implement the plan.
+4. **Every implementer spawn prompt MUST include, verbatim:**
+   - The issue text (`gh issue view <n>` / MCP / local file) and the plan.
    - Its file-ownership list and: *"You have full permission to read, write, and edit any file in your ownership list. Do not touch files outside it — another agent owns them. Do not ask for confirmation, do not wait for approval. Just do the work."*
    - The **entire** Known Pitfalls section copied from `known_pitfalls_path` — all of it, every time. It is cheap and prevents the most common bugs. Do NOT filter it.
+   - The instruction to end its report with exactly one status line — `STATUS: DONE`, `STATUS: BLOCKED` (external dependency, explain), or `STATUS: PLAN_MISMATCH` (plan diverges from reality, explain) — so the orchestrator can route the result per Step 6.
    - Spawn with **`mode: "auto"`** so agents auto-accept edits and never prompt.
 5. **Do NOT use `TeamCreate` / `TeamDelete` / `TaskCreate` / `TaskUpdate`.** They write to `~/.claude/` and reset `bypassPermissions` to `acceptEdits`. Use direct `Agent` spawns only.
 6. **Monitor and assist** (orchestrator does these directly — the only code the orchestrator writes is small cross-agent integration glue):
    - The Stop hook lints/formats in the background; fix lint errors it surfaces without waiting for the agent to finish.
-   - Coder reports `BLOCKED` → skip that issue, file a `blocked` ticket with the reason, move on.
-   - Coder reports `PLAN_MISMATCH` / needs context → resolve autonomously via `SendMessage`; if truly impossible, skip and file a ticket.
+   - Implementer reports `BLOCKED` → skip that issue, file a `blocked` ticket with the reason, move on.
+   - Implementer reports `PLAN_MISMATCH` / needs context → resolve autonomously via `SendMessage`; if truly impossible, skip and file a ticket.
 7. **Shut down each agent the moment it finishes** — send `shutdown_request` via `SendMessage` (also written to `/tmp/flow-session/shutdown_request` per the protocol). Idle agents waste resources and clutter the terminal.
 8. **Fix cross-agent integration issues** (orchestrator, small glue only): registries/index files that need every new entry, import wiring, migration ordering. Then run `lint_cmd` + `typecheck_cmd` and fix failures.
 
@@ -81,11 +82,11 @@ Run **`/flow:deep-review`** over the sprint diff. Do NOT duplicate its logic her
 
 ## Phase 4: Push
 
-Delegate to **`/flow:push`** (it knows `solo` vs `team`, arms the `.build-check` gate, runs `ci-check`, closes issues, and pushes or opens a PR). If `/flow:push` reports an unfixable failure, fix it autonomously (or skip the offending change and file a ticket) — never ship broken code, never force-push, never `--no-verify`.
+Delegate to **`/flow:pause land`** (it runs CI checks, arms the `.build-check` gate when `stop_check: lint+build`, closes issues, pushes, and — on a feature branch — rebases and ff-merges onto the default branch; on `solo` mode, already on the default branch, it just commits and pushes). If it reports an unfixable failure, fix it autonomously (or skip the offending change and file a ticket) — never ship broken code, never force-push, never `--no-verify`.
 
 ## Phase 5: Cleanup and loop
 
-1. Clear `/tmp/flow-session/*` per `agent-workflow.md`. Do not touch `session-progress.md` — `/flow:push` already settled it (deleted if the sprint shipped everything, kept if tasks remain).
+1. Clear `/tmp/flow-session/*` per `agent-workflow.md`. Do not touch `session-progress.md` — `/flow:pause land` already settled it (deleted if the sprint shipped everything, kept if tasks remain).
 2. **File tickets** for problems discovered during the sprint that were out of scope (tag `blocked` if they need a user decision).
 3. **Capture learnings** (only if `memory_path` is set): if the sprint produced durable cross-session knowledge, write a short memory file under `memory_path` and update its `MEMORY.md` index. Skip routine work.
 4. Output the **Sprint report** (format below).
@@ -136,7 +137,7 @@ Status:         Continuing to sprint... / Codebase clean — autopilot complete 
 ## Rules
 
 - **Orchestrator never writes feature code** — it coordinates agents and does only small integration glue (registries, imports, migration order, lint).
-- **Strict file ownership** — no two coders touch the same file in a sprint. If you can't partition cleanly, give the shared file to a single coder.
+- **Strict file ownership** — no two implementers touch the same file in a sprint. If you can't partition cleanly, give the shared file to a single implementer.
 - **Fresh agents per sprint** — never reuse agents across sprints. `shutdown_request` every agent as soon as it reports.
 - **Inject the full Known Pitfalls into every spawn.**
 - **Never** force-push, skip hooks, `git add -A` (stage by name; exclude secrets and `/tmp/flow-session/`), or write fake code to close a ticket.

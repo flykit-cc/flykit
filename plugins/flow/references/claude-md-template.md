@@ -63,10 +63,8 @@ If a command is missing, run `/flow:init` to set it.
 | Command | Purpose |
 |---------|---------|
 | `/flow:init` | Bootstrap `.claude/config.md` and `CLAUDE.md` |
-| `/flow:start` | Begin a session, pick an issue, route to agents |
-| `/flow:continue` | Resume an interrupted session |
-| `/flow:pause` | Save WIP and shut down agents cleanly |
-| `/flow:push` | Run CI checks, close issues, commit, push |
+| `/flow:continue` | Resume the last session, or start a new one if none exists |
+| `/flow:pause` | Save WIP and shut down agents cleanly; `land` also closes issues, ships, and merges |
 | `/flow:audit` | Scan for smells, security holes, stale docs, dead code |
 | `/flow:cleanup` | Run formatter and linter with auto-fix |
 | `/flow:health` | Verify workflow setup |
@@ -76,16 +74,11 @@ If a command is missing, run `/flow:init` to set it.
 
 | Agent | Role |
 |-------|------|
-| investigator | Map relevant code; produce a fact sheet |
-| architect | Turn investigation into a plan |
-| coder | Execute the plan |
 | reviewer | Classify findings: BREAKS / SECURITY / MINOR |
-| scout | Wide-scope search across the codebase |
-| issuer | Write a clean issue from a finding |
-| websearch | Pull external docs and references |
-| ci-check | Run lint / typecheck / build / test from `config.md` |
 
-See the plugin's `references/agent-workflow.md` for how they hand off.
+Other phases (investigation, planning, implementation, search) route through Claude Code's
+built-in `Explore` and `general-purpose` agents, or the `superpowers:writing-plans` skill —
+see the plugin's `references/agent-workflow.md`.
 
 ## Known Pitfalls
 
