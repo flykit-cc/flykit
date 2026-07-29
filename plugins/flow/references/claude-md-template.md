@@ -16,18 +16,16 @@
 
 ## Structure
 
+> Map the directories that matter here — the ones a newcomer would guess wrong.
+> Skip the obvious ones. Delete this section if the layout is self-evident.
+
 ```
 {PROJECT_ROOT}/
-  src/                  application code
-  tests/                test suites
-  scripts/              one-off and CI scripts
-  .claude/
+  .flow/
     config.md           workflow + stack commands (read by /flow:*)
-    settings.json       Claude Code settings, hooks, MCP servers
+    local.md            machine-local overrides, never committed
   CLAUDE.md             this file
 ```
-
-Adjust to match the actual layout once it stabilizes.
 
 ## Commands
 
@@ -63,12 +61,16 @@ If a command is missing, run `/flow:init` to set it.
 | Command | Purpose |
 |---------|---------|
 | `/flow:init` | Bootstrap `.flow/config.md` and `CLAUDE.md` |
+| `/flow:uninstall` | Remove the files `/flow:init` created |
 | `/flow:continue` | Resume the last session, or start a new one if none exists |
+| `/flow:status` | Read-only "where am I / what's running / what next" |
 | `/flow:pause` | Save WIP and shut down agents cleanly; `land` also closes issues, ships, and merges |
 | `/flow:audit` | Scan for smells, security holes, stale docs, dead code |
 | `/flow:cleanup` | Run formatter and linter with auto-fix |
 | `/flow:health` | Verify workflow setup |
 | `/flow:deep-review` | Parallel reviewers + fix loop on the current diff |
+| `/flow:flawz` | Pressure-test a plan or design for real flaws before acting on it |
+| `/flow:autopilot` | Autonomous multi-sprint loop: agent team, deep-review, ship, repeat |
 
 ## Agents
 

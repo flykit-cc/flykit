@@ -11,8 +11,10 @@
  *
  * Creates (idempotent — never overwrites):
  *   <target>/.flow/config.md     from references/config-template.md
- *   <target>/CLAUDE.md             from references/claude-md-template.md
- *   <target>/issues/               empty directory for local-backend issues
+ *   <target>/CLAUDE.md           from references/claude-md-template.md, ONLY when
+ *                                absent — an existing one is left strictly alone
+ *   <target>/issues/             only when pm_backend is `local`, which is the
+ *                                only backend that reads it
  *
  * Any of the flags above that are supplied get written into a freshly-created
  * config.md alongside the auto-detected stack commands. Omitted flags keep the
@@ -119,6 +121,21 @@ function appendSection(dest, marker, body) {
     const sep = current.endsWith('\n') ? '\n' : '\n\n';
     fs.appendFileSync(dest, `${sep}${block}`);
     return 'appended';
+}
+
+/**
+ * Drop `<!-- template-only:begin -->…<!-- template-only:end -->` regions.
+ *
+ * The template carries guidance for whoever edits *the template*, which is
+ * noise in a generated project file — a title reading "…template", an intro
+ * explaining what the file is, example values sitting under the real detected
+ * ones. Stripping is explicit rather than heuristic so the template stays
+ * readable on its own.
+ */
+function stripTemplateOnly(text) {
+    return text
+        .replace(/[^\S\n]*<!-- template-only:begin -->\n[\s\S]*?<!-- template-only:end -->\n/g, '')
+        .replace(/\n{3,}/g, '\n\n');
 }
 
 const STACK_CMD_KEYS = ['dev_cmd', 'lint_cmd', 'typecheck_cmd', 'build_cmd', 'test_cmd', 'format_cmd'];
@@ -234,6 +251,18 @@ function applyPmFields(text, opts) {
         out = out.replace(re, `- ${key}:${value ? ' ' + value : ''}`);
     }
     return out;
+}
+
+/**
+ * The effective `pm_backend` for this project, read from config.md — the
+ * authoritative record, which survives re-runs where the CLI flags are absent.
+ * Falls back to the template's own default when the key is missing.
+ */
+function readPmBackend(configPath) {
+    if (!fs.existsSync(configPath)) return 'github';
+    const m = fs.readFileSync(configPath, 'utf8').match(/^[ \t]*(?:-[ \t]+)?pm_backend[ \t]*:[ \t]*(\S*)/m);
+    const value = m && m[1] ? m[1].trim() : '';
+    return VALID_PM_BACKENDS.includes(value) ? value : 'github';
 }
 
 function readPkg(target) {
@@ -402,6 +431,7 @@ function main() {
         let text = fs.readFileSync(configDest, 'utf8');
         text = applyStackCommands(text, detected);
         text = applyPmFields(text, args);
+        text = stripTemplateOnly(text);
         fs.writeFileSync(configDest, text);
         for (const key of STACK_CMD_KEYS) {
             if (detected[key]) {
@@ -419,9 +449,14 @@ function main() {
             if (value) process.stdout.write(`  set: ${key} = ${value}\n`);
         }
     }
-    // CLAUDE.md usually already exists, so append a marked section rather than
-    // skipping — otherwise an existing project never receives flow's conventions.
-    if (fs.existsSync(claudeSrc)) {
+    // An existing CLAUDE.md is the project's own documentation and is left
+    // strictly alone. Appending a generic Stack/Structure block used to
+    // contradict a file that already described the repo accurately, and nothing
+    // in flow actually requires it: the only functional read is
+    // `known_pitfalls_path`, which merely *defaults* to CLAUDE.md.
+    if (fs.existsSync(claudeDest)) {
+        process.stdout.write('  · CLAUDE.md: already exists, left untouched\n');
+    } else if (fs.existsSync(claudeSrc)) {
         const { language, runtime } = detectLanguageRuntime(target);
         const body = renderClaudeMdTemplate(fs.readFileSync(claudeSrc, 'utf8'), {
             projectName: detectProjectName(target, args.projectName),
@@ -436,7 +471,14 @@ function main() {
     } else {
         report('CLAUDE.md', { created: false, path: claudeSrc, missingSource: true });
     }
-    report('issues/', ensureDir(issuesDir));
+
+    // `issues/` is only read by the `local` PM backend. Creating it for a
+    // github/linear project litters the repo with a directory nothing uses.
+    // Read the answer from config.md rather than the flags: on a re-run the
+    // flags are usually absent but the project's choice is already recorded.
+    if (readPmBackend(configDest) === 'local') {
+        report('issues/', ensureDir(issuesDir));
+    }
 
     process.stdout.write('\n[flow init] Done. Next: edit .flow/config.md to fill in your project commands.\n');
     return 0;
@@ -447,7 +489,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-    main, parseArgs, copyIfMissing, ensureDir, appendSection,
+    main, parseArgs, copyIfMissing, ensureDir, appendSection, stripTemplateOnly, readPmBackend,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
     detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
     VALID_WORKFLOW_MODES, VALID_PM_BACKENDS,

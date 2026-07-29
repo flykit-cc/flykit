@@ -1,12 +1,23 @@
+<!-- template-only:begin -->
 # `.flow/config.md` template
 
-This file lives at `.flow/config.md` in your project. The `flow` plugin's commands and agents read it to learn how to run things in your stack.
+This is the file `/flow:init` copies into a project as `.flow/config.md`, filling in the
+detected stack commands as it goes.
 
-It is intentionally markdown — easy to read, easy to edit by hand. Values go after the colon on each line. Comments start with `<!--` or `>` blockquotes and are ignored.
+Anything between `template-only` markers is stripped from the generated file — it is
+guidance for whoever edits this template, not for the project that receives it. Keep
+instructions *about the template* inside the markers, and instructions *about the settings*
+outside them.
+<!-- template-only:end -->
+# flow config
 
-This file lives at `.flow/config.md` and is **shareable project truth** — commit it if you
-want collaborators and your other machines to get the same stack setup. Machine-specific
-values belong in `.flow/local.md`, which `private_globs` keeps out of git.
+Read by the `flow` plugin's commands and agents to learn how to run things in this stack.
+
+This file is **shareable project truth** — commit it if you want collaborators and your
+other machines to get the same setup. Machine-specific values belong in `.flow/local.md`,
+which `private_globs` keeps out of git.
+
+Values go after the colon on each line. `>` blockquotes and `<!-- -->` comments are ignored.
 
 ---
 
@@ -53,11 +64,15 @@ When `pm_backend: local`, issues live as markdown files in `./issues/` and no ex
 - test_cmd: {COMMAND_TO_RUN_TESTS}
 - format_cmd: {COMMAND_TO_FORMAT_CODE}
 
+<!-- template-only:begin -->
 Examples (replace with your own — these are illustrative, not defaults):
 
 - e.g. dev_cmd: `<your-package-manager> run dev`
 - e.g. lint_cmd: `<your-linter>`
 - e.g. test_cmd: `<your-test-runner>`
+<!-- template-only:end -->
+> `/flow:init` fills these in from your manifest. A blank value means "skip that step" —
+> add one by hand if the detection missed it.
 
 ---
 

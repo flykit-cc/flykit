@@ -98,9 +98,10 @@ test('main: idempotent — running twice produces same files, no overwrite', () 
         const code1 = main();
         assert.equal(code1, 0);
 
-        // Files we expect to exist regardless of whether templates were present.
+        // issues/ belongs to the `local` backend only; the default is github,
+        // so an unflagged init must not create it.
         const issuesDir = path.join(sandbox, 'issues');
-        assert.equal(fs.existsSync(issuesDir), true, 'issues/ created');
+        assert.equal(fs.existsSync(issuesDir), false, 'issues/ not created for the default github backend');
 
         // config.md still uses copyIfMissing: mutate it and ensure second run leaves it alone.
         const configDest = path.join(sandbox, '.flow', 'config.md');
@@ -122,9 +123,8 @@ test('main: idempotent — running twice produces same files, no overwrite', () 
             assert.equal(fs.readFileSync(configDest, 'utf8'), 'USER EDIT', 'config preserved');
         }
         if (fs.existsSync(claudeDest)) {
-            const claudeText = fs.readFileSync(claudeDest, 'utf8');
-            assert.match(claudeText, /^USER EDIT/, 'existing CLAUDE.md content preserved at the top');
-            assert.match(claudeText, /<!-- flow:begin -->/, 'flow section appended since no marker was present');
+            assert.equal(fs.readFileSync(claudeDest, 'utf8'), 'USER EDIT',
+                'an existing CLAUDE.md is left byte-for-byte alone, marker or not');
         }
     } finally {
         process.argv = origArgv;
@@ -138,10 +138,57 @@ test('main: --target honored', () => {
     try {
         const code = main();
         assert.equal(code, 0);
-        assert.equal(fs.existsSync(path.join(sandbox, 'issues')), true);
+        assert.equal(fs.existsSync(path.join(sandbox, '.flow', 'config.md')), true,
+            'config lands under the target, not the cwd');
     } finally {
         process.argv = origArgv;
     }
+});
+
+test('main: issues/ is created for the local backend and only that one', () => {
+    const local = mkSandbox();
+    runInit(local, ['--pm-backend', 'local']);
+    assert.equal(fs.existsSync(path.join(local, 'issues')), true,
+        'the local backend stores issues as files and needs the directory');
+
+    for (const backend of ['github', 'linear']) {
+        const sandbox = mkSandbox();
+        runInit(sandbox, ['--pm-backend', backend]);
+        assert.equal(fs.existsSync(path.join(sandbox, 'issues')), false,
+            `${backend} tracks issues remotely — issues/ would be dead weight`);
+    }
+});
+
+test('generated config.md carries no template-only scaffolding', () => {
+    const sandbox = mkSandbox();
+    runInit(sandbox);
+    const text = fs.readFileSync(path.join(sandbox, '.flow', 'config.md'), 'utf8');
+
+    assert.ok(!text.includes('template-only'), 'the markers themselves must be gone');
+    assert.ok(!/^# .*template/im.test(text), 'the generated file is not "a template"');
+    assert.ok(!text.includes('e.g. dev_cmd'), 'illustrative examples must not sit under real values');
+    assert.match(text, /^- workflow_mode:/m, 'the actual settings survive');
+});
+
+test('stripTemplateOnly removes marked regions and leaves the rest', () => {
+    const { stripTemplateOnly } = require('./init');
+    const input = 'keep me\n<!-- template-only:begin -->\ndrop me\n<!-- template-only:end -->\nkeep me too\n';
+    const out = stripTemplateOnly(input);
+    assert.ok(!out.includes('drop me'));
+    assert.match(out, /keep me/);
+    assert.match(out, /keep me too/);
+});
+
+test('readPmBackend reads the project choice from config.md, defaulting to github', () => {
+    const { readPmBackend } = require('./init');
+    const sandbox = mkSandbox();
+    const cfg = path.join(sandbox, 'config.md');
+
+    assert.equal(readPmBackend(cfg), 'github', 'a missing config falls back to the template default');
+    fs.writeFileSync(cfg, '- pm_backend: local\n');
+    assert.equal(readPmBackend(cfg), 'local');
+    fs.writeFileSync(cfg, '- pm_backend: nonsense\n');
+    assert.equal(readPmBackend(cfg), 'github', 'an invalid value must not be trusted');
 });
 
 test('main: nonexistent target returns non-zero', () => {
@@ -155,26 +202,30 @@ test('main: nonexistent target returns non-zero', () => {
     }
 });
 
-test('init appends the flow section to an existing CLAUDE.md', () => {
+test('init leaves an existing CLAUDE.md byte-for-byte untouched', () => {
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
-    fs.writeFileSync(path.join(target, 'CLAUDE.md'), '# My project\n\nExisting notes.\n');
+    const original = '# My project\n\nExisting notes that describe this repo accurately.\n';
+    fs.writeFileSync(path.join(target, 'CLAUDE.md'), original);
 
     runInit(target);
 
     const text = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
-    assert.match(text, /# My project/, 'existing content must be preserved');
-    assert.match(text, /<!-- flow:begin -->/, 'flow section must be appended');
+    assert.equal(text, original,
+        'a project that already documents itself must not receive a generic template that contradicts it');
 });
 
-test('init is idempotent on CLAUDE.md', () => {
+test('init creates CLAUDE.md from the template only when none exists', () => {
     const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
-    fs.writeFileSync(path.join(target, 'CLAUDE.md'), '# My project\n');
-
-    runInit(target);
     runInit(target);
 
-    const text = fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8');
-    const count = (text.match(/<!-- flow:begin -->/g) || []).length;
+    const dest = path.join(target, 'CLAUDE.md');
+    assert.equal(fs.existsSync(dest), true, 'an absent CLAUDE.md is worth seeding');
+    const text = fs.readFileSync(dest, 'utf8');
+    assert.match(text, /<!-- flow:begin -->/);
+
+    // Second run must not duplicate it — now covered by the "already exists" path.
+    runInit(target);
+    const count = (fs.readFileSync(dest, 'utf8').match(/<!-- flow:begin -->/g) || []).length;
     assert.equal(count, 1, 'the flow section must appear exactly once');
 });
 
