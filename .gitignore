@@ -27,6 +27,11 @@ Thumbs.db
 # A contributor's local .claude/ is their own setup, not project state.
 .claude/
 
+# CLAUDE.md is the maintainer's local working instructions, not project truth.
+# Removed from git history on 2026-07-28. Contributor-facing rules that used to
+# live here (notably the plugin version-bump requirement) are in CONTRIBUTING.md.
+CLAUDE.md
+
 # Build / output
 dist/
 build/

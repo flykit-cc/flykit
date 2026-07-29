@@ -4,9 +4,9 @@
   "authorUrl": "https://github.com/kaiomp",
   "categories": ["Productivity", "Workflow", "DevOps"],
   "tagline": "An opinionated AI dev workflow for Claude Code — session lifecycle, orchestrated agents, and deep reviews that work in any repo.",
-  "description": "Flow packages a battle-tested workflow for shipping software with Claude Code. It wires up nine slash commands, a focused reviewer agent on top of Claude Code's built-in agents, and a handful of hooks so every session starts, runs, and ships consistently — while staying stack-agnostic by reading project specifics from a per-repo config.md.",
+  "description": "Flow packages a battle-tested workflow for shipping software with Claude Code. It wires up ten slash commands, a focused reviewer agent on top of Claude Code's built-in agents, and a handful of hooks so every session starts, runs, and ships consistently — while staying stack-agnostic by reading project specifics from a per-repo config.md.",
   "features": [
-    "Nine slash commands covering the full session lifecycle: init, continue (cold-starts or resumes), pause (including a land mode that ships), plus autonomous autopilot",
+    "Ten slash commands covering the full session lifecycle: init, continue (cold-starts or resumes), status (a read-only where-am-I), pause (including a land mode that ships), plus autonomous autopilot",
     "One focused reviewer agent, layered on Claude Code's built-in Explore and general-purpose agents plus the writing-plans skill, coordinated by a main orchestrator",
     "Autopilot: an autonomous multi-sprint loop that spawns a non-overlapping agent team, deep-reviews, ships, and self-generates work via audit",
     "Project-agnostic: dev/lint/test/build commands come from your repo's .flow/config.md",

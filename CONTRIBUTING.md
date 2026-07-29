@@ -28,6 +28,8 @@ flykit/
 │       ├── scripts/
 │       ├── references/
 │       └── README.md
+├── scripts/
+│   └── check-plugin-versions.sh   # version guard, also run by CI
 ├── README.md
 ├── CONTRIBUTING.md          # You are here
 └── LICENSE
@@ -121,6 +123,35 @@ Most contributions are incremental — fixing a bug, adding a skill to an existi
 - **Extend a pluggable abstraction.** Some plugins expose internal contracts so new backends can be added without rewriting the plugin. The canonical example is steuer's transaction-source interface: see `plugins/steuer/scripts/sources/README.md` for the shape and a walkthrough of adding a new source. Follow the same pattern (small adapter, one file, documented contract) when introducing similar seams in other plugins.
 - **Don't forget the README.** If user-facing behavior changes, update the plugin's `README.md` — the flykit.cc site renders directly from it.
 
+## Versioning — bump it whenever you change a plugin
+
+**Any change under `plugins/<name>/` — code, docs, a typo — requires a version bump in the same commit.** Update all of these, keeping them identical:
+
+```
+plugins/<name>/.claude-plugin/plugin.json    version
+plugins/<name>/package.json                  version   (when the plugin has one)
+.claude-plugin/marketplace.json              the plugin's entry
+```
+
+Semver against what a user's install experiences:
+
+| Bump | When |
+|---|---|
+| patch | bug fixes, docs, internal refactors |
+| minor | new commands or skills; moved or renamed config paths (that breaks existing setups) |
+| major | a rewrite, or removing something people depend on |
+
+**Why this is mandatory.** The plugin cache is keyed by version — `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>`. `/plugin update` compares **versions, not commits**. Ship a change without bumping and the update becomes a silent no-op: it prints nothing, exits clean, and every user keeps running the old code. This bit flow `0.2.0` on 2026-07-28 and took a full session to diagnose.
+
+Check before you commit:
+
+```bash
+./scripts/check-plugin-versions.sh              # the three files agree
+./scripts/check-plugin-versions.sh --since main # ...and were bumped for what changed
+```
+
+CI runs the same script on pull requests **and on direct pushes to `main`**.
+
 ## Local development
 
 Clone the repo first:
@@ -173,7 +204,7 @@ node plugins/<your-plugin>/scripts/<script>.js --year 2024
 
 1. Fork the repo and create a feature branch off `main`.
 2. Make your changes. Keep PRs focused — one plugin or one bug fix at a time.
-3. Update `marketplace.json` and bump the plugin's `version` if you changed plugin code.
+3. Bump the plugin's `version` and the matching `marketplace.json` entry — required for *any* change under `plugins/`, see [Versioning](#versioning--bump-it-whenever-you-change-a-plugin). CI enforces this.
 4. Update the plugin's `README.md` if user-facing behavior changed.
 5. Open a PR with a clear description: what changed, why, and how you tested it.
 6. The maintainer reviews and merges. The site at flykit.cc redeploys automatically via GitHub Actions on merge to `main`.

@@ -1,7 +1,13 @@
-name: PR check
+# Runs on PRs and on direct pushes to main — most work here lands without a PR.
+name: Checks
 
 on:
   pull_request:
+    branches: [main]
+  # Also on direct pushes to main. Most work here lands straight on main without
+  # a PR, so a pull_request-only workflow would never see it — which is exactly
+  # how the flow 0.2.0 stale-version bug shipped unnoticed.
+  push:
     branches: [main]
 
 jobs:
@@ -13,6 +19,7 @@ jobs:
           fetch-depth: 0
 
       - name: Verify web.json author matches PR author
+        if: github.event_name == 'pull_request'
         env:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -80,6 +87,22 @@ jobs:
           if [ "$missing" -gt 0 ]; then
             echo "::error::$missing plugin(s) missing web.json"
             exit 1
+          fi
+
+      - name: Plugin versions are consistent and bumped
+        env:
+          # On a PR, compare against the merge base. On a push to main, compare
+          # against the commit before the push (`event.before`), which is the
+          # state users' installs were last able to see.
+          BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -e
+          # A first push to a new branch reports an all-zero `before` sha; there
+          # is nothing to diff against, so run consistency checks only.
+          if [ -z "$BASE_REF" ] || [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
+            ./scripts/check-plugin-versions.sh
+          else
+            ./scripts/check-plugin-versions.sh --since "$BASE_REF"
           fi
 
       - name: Syntax-check plugin scripts

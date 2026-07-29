@@ -15,9 +15,9 @@
     },
     {
       "name": "flow",
-      "description": "Stack-agnostic AI dev workflow — nine slash commands, a focused reviewer agent, and hooks that layer with your project's .claude/ setup",
+      "description": "Stack-agnostic AI dev workflow — ten slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
       "source": "./plugins/flow",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "workflow",
       "keywords": [
         "workflow",

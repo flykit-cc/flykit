@@ -23,6 +23,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | -------------------- | ----------------------------------------------------------------------- |
 | `/flow:init`         | One-time setup. Drops config and memory templates into the project.     |
 | `/flow:continue`     | Resume an in-progress session from `.flow/session-progress.md`, or start a new one if none exists. |
+| `/flow:status`       | Read-only "where am I / what's running / what next" — git state, in-flight agents, PR/CI. Changes nothing. |
 | `/flow:pause`        | Snapshot current state to `.flow/session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
 | `/flow:audit`        | Dry-run review: lint, typecheck, security pass without shipping.        |
 | `/flow:cleanup`      | Tidy stray branches, stale session files, and `/tmp/flow-session/`.     |
