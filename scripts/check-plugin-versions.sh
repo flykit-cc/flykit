@@ -93,8 +93,14 @@ done < <(jq -r '.plugins[].name' "$MARKETPLACE")
 # ------------------------------------------------------------- bump required
 
 if [ -n "$SINCE" ]; then
-    if ! git rev-parse --verify "$SINCE" >/dev/null 2>&1; then
-        echo "warn  base ref '$SINCE' not found — skipping the bump check" >&2
+    # `git rev-parse --verify` only validates the *shape* of a 40-char sha and
+    # returns 0 for an object that isn't in the repo — so it cannot detect a
+    # base ref that no longer exists (e.g. after a history rewrite, or on a
+    # shallow clone). `git cat-file -e` checks the object is actually present.
+    # Getting this wrong made the bump check fail *open*: git diff errored, the
+    # `|| true` swallowed it, and every plugin looked unchanged.
+    if ! git cat-file -e "${SINCE}^{commit}" 2>/dev/null; then
+        fail "$MARKETPLACE" "base ref '$SINCE' is not a commit in this repo, so the version-bump check could not run. On CI this usually means a force-push or a shallow clone (set fetch-depth: 0)."
     else
         while IFS= read -r name; do
             manifest="plugins/$name/.claude-plugin/plugin.json"
