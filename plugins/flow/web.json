@@ -27,8 +27,16 @@
       "description": "Bootstrap a new project with .flow/config.md and CLAUDE.md tailored to your stack."
     },
     {
+      "name": "uninstall",
+      "description": "Remove the files init created, so you can start clean or re-init. Dry-run by default; asks before dropping session state."
+    },
+    {
       "name": "continue",
       "description": "Resume the last session from .flow/session-progress.md exactly where you left off, or start a new one if none exists."
+    },
+    {
+      "name": "status",
+      "description": "Read-only \"where am I / what's running / what next\" — git state, in-flight agents, PR and CI. Changes nothing."
     },
     {
       "name": "pause",

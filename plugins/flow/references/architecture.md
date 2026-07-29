@@ -1,6 +1,6 @@
 # Architecture: how the plugin and your project layer together
 
-The `flow` plugin is a **workflow backbone**. It does not know your stack. Your project's `.claude/` directory tells it everything stack-specific.
+The `flow` plugin is a **workflow backbone**. It does not know your stack. Your project's `.flow/` directory tells it everything stack-specific.
 
 ## The two layers
 
@@ -12,21 +12,26 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
   references/                        docs loaded on demand
   scripts/                           helper scripts called via ${CLAUDE_PLUGIN_ROOT}
 
-<your-project>/.claude/              (your project — written by /flow:init)
-  config.md                          workflow + stack commands
-  settings.json                      Claude Code settings, hook overrides, MCP servers
-  CLAUDE.md  (lives at project root) instructions to Claude in this repo
+<your-project>/.flow/                (written by /flow:init, removed by /flow:uninstall)
+  config.md                          workflow + stack commands — SHAREABLE, commit it
+  local.md                           machine-local overrides — private, never committed
+  session-progress.md                created by /flow:continue (cold start); settled on
+                                     /flow:pause land — deleted when everything shipped,
+                                     kept while tasks remain
+  session-log.md                     dated session blocks, newest first (written by
+                                     /flow:pause, all modes)
+  state/last-pause                   pause marker (HEAD/branch/timestamp)
+  .allow-*                           one-shot arming markers, never committed
 
-<your-project>/                      (your project's own state — all gitignore-worthy)
-  CLAUDE.md                          project instructions (template-seeded, then grows)
-  .flow/session-progress.md                created by /flow:continue (cold start); settled on /flow:pause land — deleted when everything shipped, kept while tasks remain
-  .flow/session-log.md                     dated session blocks, newest first (written by /flow:pause, all modes)
-  .claude/state/last-pause           pause marker (HEAD/branch/timestamp)
-  .flow/                             machine-local flow state — never commit
+<your-project>/
+  CLAUDE.md                          yours. Seeded from the template only when absent;
+                                     an existing one is never touched
+  .claude/settings.json              Claude Code settings, hooks, MCP servers — flow
+                                     does NOT manage this file
   issues/                            only when pm_backend = local
 ```
 
-The state files above are machine-local working memory. Add them to `.gitignore` (except `issues/`, which you may want to track). Durable cross-session memory lives outside the repo at `memory_path` (see config-template.md).
+`.flow/config.md` is deliberately **shareable project truth**: commit it and collaborators get the same stack setup. Everything else under `.flow/` is session state or machine-local — the default `private_globs` keeps `local.md` and the arming markers out of commits. Durable cross-session memory lives outside the repo at `memory_path` (see config-template.md).
 
 ## Who owns what
 
@@ -65,4 +70,6 @@ Claude Code reads `CLAUDE.md` from the project root automatically on every sessi
 
 ## Updating the plugin
 
-Plugin updates ship via the marketplace. Your project's `.flow/config.md` and `CLAUDE.md` are unaffected — they are yours. If a plugin update changes the template, `/flow:init` will offer to merge or skip when you re-run it; it never silently overwrites.
+Plugin updates ship via the marketplace. Your project's `.flow/config.md` and `CLAUDE.md` are unaffected — they are yours, and `/flow:init` never overwrites a file that exists.
+
+The flip side: because nothing is overwritten, **a template change in a plugin update does not reach a project that was already initialised**. Re-running `/flow:init` will report `already exists, skipping` and change nothing. To adopt a new template, run `/flow:uninstall` first (it asks before dropping session state), then `/flow:init` again — and expect to re-apply any hand edits to `config.md`.

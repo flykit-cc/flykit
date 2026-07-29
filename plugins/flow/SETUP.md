@@ -14,17 +14,24 @@ From inside the project you want flow to manage:
 /flow:init
 ```
 
-This creates (without overwriting anything that already exists):
+Init asks a few questions it can't infer (workflow mode, issue backend), detects your stack
+commands from `package.json` / `go.mod` / `Cargo.toml` / `pyproject.toml`, and then runs
+`/flow:health` to confirm the setup.
 
-- `.flow/config.md` — project-specific settings flow reads from.
-- `CLAUDE.md` — project memory loaded into every Claude Code session.
-- `issues/` — local issue store (only used if `pm_backend: local`).
+It creates, without overwriting anything that already exists:
 
-If a file already exists, init prints `already exists, skipping` and moves on.
+- `.flow/config.md` — project settings, with your stack commands already filled in.
+- `CLAUDE.md` — **only if you don't have one**. An existing CLAUDE.md is left strictly alone.
+- `issues/` — only when `pm_backend: local`, the one backend that reads it.
 
-## 2. Fill in `.flow/config.md`
+Because nothing is overwritten, re-running init on an already-initialised project changes
+nothing. To pick up template changes from a plugin update, run `/flow:uninstall` first (it
+asks before dropping session state), then `/flow:init` again.
 
-Open `.flow/config.md` and replace the placeholders. Minimum useful set:
+## 2. Check `.flow/config.md`
+
+Init fills in what it detected, so most projects only need a glance. A blank value means
+"skip that step" — fill it in by hand if detection missed something:
 
 ```
 workflow_mode: solo

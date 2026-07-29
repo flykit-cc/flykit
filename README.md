@@ -41,6 +41,7 @@ Then install any plugin from it:
 
 | Plugin | What it does |
 |---|---|
+| [**flow**](./plugins/flow) | A stack-agnostic dev workflow — session lifecycle (`continue` / `status` / `pause`), parallel deep reviews, and an autonomous autopilot loop. Reads your stack from a per-repo `.flow/config.md`. |
 | [**steuer**](./plugins/steuer) | German freelancer tax filing — fetch transactions from Wise, classify with Claude, calculate the EÜR, walk through ELSTER. |
 | _more coming_ | Got a workflow worth automating? Open an issue or see [CONTRIBUTING.md](./CONTRIBUTING.md). |
 
