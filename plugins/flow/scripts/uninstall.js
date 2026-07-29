@@ -3,13 +3,14 @@
  * uninstall.js — remove the files `/flow:init` created from a project.
  *
  * Usage:
- *   node scripts/uninstall.js [--target <dir>] [--yes] [--purge]
+ *   node scripts/uninstall.js [--target <dir>] [--yes] [--keep-progress] [--purge]
  *
  * Safe by default: with no --yes it prints the plan and changes nothing, so
  * `uninstall` then `init` is a reliable way to regenerate a stale config.
  *
  * Removes:
- *   .flow/config.md, .flow/local.md, .flow/session-progress.md
+ *   .flow/config.md, .flow/local.md
+ *   .flow/session-progress.md — unless --keep-progress
  *   .flow/state/ and the one-shot arming markers (.flow/.allow-*)
  *   the <!-- flow:begin -->…<!-- flow:end --> block in CLAUDE.md
  *   issues/  — only when empty; never deletes issue files
@@ -28,12 +29,13 @@ const fs = require('fs');
 const path = require('path');
 
 function parseArgs(argv) {
-    const args = { target: process.cwd(), yes: false, purge: false };
+    const args = { target: process.cwd(), yes: false, purge: false, keepProgress: false };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--target' || a === '-t') args.target = path.resolve(argv[++i] || '.');
         else if (a === '--yes' || a === '-y') args.yes = true;
         else if (a === '--purge') args.purge = true;
+        else if (a === '--keep-progress') args.keepProgress = true;
         else if (a === '--help' || a === '-h') args.help = true;
     }
     return args;
@@ -41,12 +43,13 @@ function parseArgs(argv) {
 
 function printHelp() {
     process.stdout.write(
-        'Usage: node scripts/uninstall.js [--target <dir>] [--yes] [--purge]\n' +
+        'Usage: node scripts/uninstall.js [--target <dir>] [--yes] [--keep-progress] [--purge]\n' +
         '\n' +
-        '  --target, -t   Project directory (default: cwd)\n' +
-        '  --yes, -y      Actually remove; without it, only prints the plan\n' +
-        '  --purge        Also delete .flow/session-log.md (append-only history)\n' +
-        '  --help, -h     Show this help\n'
+        '  --target, -t      Project directory (default: cwd)\n' +
+        '  --yes, -y         Actually remove; without it, only prints the plan\n' +
+        '  --keep-progress   Keep .flow/session-progress.md (your live session thread)\n' +
+        '  --purge           Also delete .flow/session-log.md (append-only history)\n' +
+        '  --help, -h        Show this help\n'
     );
 }
 
@@ -89,11 +92,23 @@ function plan(target, opts = {}) {
     const actions = [];
     const flowDir = path.join(target, '.flow');
 
-    const files = ['config.md', 'local.md', 'session-progress.md'];
+    const files = ['config.md', 'local.md'];
+    // session-progress.md is the live thread of whatever you were doing. It is
+    // cheap to keep and irreplaceable if you were mid-task, so the caller has
+    // to decide explicitly rather than losing it as a side effect.
+    if (!opts.keepProgress) files.push('session-progress.md');
     if (opts.purge) files.push('session-log.md');
     for (const name of files) {
         const p = path.join(flowDir, name);
         if (fs.existsSync(p)) actions.push({ kind: 'remove-file', path: p });
+    }
+
+    if (opts.keepProgress && fs.existsSync(path.join(flowDir, 'session-progress.md'))) {
+        actions.push({
+            kind: 'keep',
+            path: path.join(flowDir, 'session-progress.md'),
+            note: 'your current session thread',
+        });
     }
 
     // Arming markers are one-shot grants; leaving one behind would hand the
@@ -171,7 +186,7 @@ function main() {
         return 1;
     }
 
-    const actions = plan(args.target, { purge: args.purge });
+    const actions = plan(args.target, { purge: args.purge, keepProgress: args.keepProgress });
     const changes = actions.filter((a) => a.kind !== 'keep');
 
     process.stdout.write(`[flow uninstall] ${args.target}\n`);

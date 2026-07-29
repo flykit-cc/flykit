@@ -100,31 +100,49 @@ if [ "$DRY_RUN" -eq 1 ]; then
     exit 0
 fi
 
-# write_json <file> <jq-args...> — the trailing args are the filter and any
-# --arg bindings, forwarded to jq verbatim. Writes via a temp file so a jq
-# failure can never leave a truncated manifest behind.
-write_json() {
-    local file="$1"; shift
-    local tmp="${file}.tmp.$$"
-    if jq --indent 2 "$@" "$file" > "$tmp"; then
-        mv "$tmp" "$file"
-    else
-        rm -f "$tmp"
-        echo "failed to update $file" >&2
-        exit 1
-    fi
+# Edit the version in place, touching only that line.
+#
+# Deliberately NOT `jq '.version = $v'`: jq reformats the whole document, so a
+# one-field bump would expand every compact array and object in the file and
+# bury the real change in unrelated churn. These are hand-maintained manifests,
+# so their formatting is preserved and the diff stays one line per file.
+#
+# bump_version <file> [plugin-name]
+#   With a plugin name, scopes the edit to that plugin's object in
+#   marketplace.json. Without one, edits the file's own top-level version.
+bump_version() {
+    python3 - "$1" "$NEXT" "${2:-}" <<'PY'
+import re, sys
+path, new, plugin = sys.argv[1], sys.argv[2], sys.argv[3]
+src = open(path, encoding='utf8').read()
+
+if plugin:
+    # Anchor on the plugin's own "name" key, then rewrite the first "version"
+    # that follows it — never another plugin's.
+    pattern = re.compile(
+        r'("name"\s*:\s*"' + re.escape(plugin) + r'"[\s\S]*?"version"\s*:\s*")[^"]*(")')
+else:
+    pattern = re.compile(r'("version"\s*:\s*")[^"]*(")')
+
+out, n = pattern.subn(lambda m: m.group(1) + new + m.group(2), src, count=1)
+if n != 1:
+    sys.stderr.write(f'could not locate a version field to update in {path}\n')
+    sys.exit(1)
+open(path, 'w', encoding='utf8').write(out)
+PY
 }
 
-write_json "$MANIFEST" --arg v "$NEXT" '.version = $v'
+command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 2; }
+
+bump_version "$MANIFEST"
 echo "  updated $MANIFEST"
 
 if [ -f "$PKG" ]; then
-    write_json "$PKG" --arg v "$NEXT" '.version = $v'
+    bump_version "$PKG"
     echo "  updated $PKG"
 fi
 
-write_json "$MARKETPLACE" --arg n "$PLUGIN" --arg v "$NEXT" \
-    '.plugins = (.plugins | map(if .name == $n then .version = $v else . end))'
+bump_version "$MARKETPLACE" "$PLUGIN"
 echo "  updated $MARKETPLACE"
 
 # The guard is the source of truth on whether the three files now agree.

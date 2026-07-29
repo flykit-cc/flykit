@@ -36,9 +36,14 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/init.js \
   [--pm-linear-team <answer>] [--project-name <answer, only if asked>]
 ```
 
-Omit a flag entirely rather than passing an empty string. The script never overwrites an
-existing `.flow/config.md`, and appends a marked `<!-- flow:begin -->` section to
-`CLAUDE.md` idempotently — safe to re-run.
+Omit a flag entirely rather than passing an empty string. Safe to re-run: the script never
+overwrites an existing `.flow/config.md`, and it leaves an existing `CLAUDE.md` **strictly
+alone** — a project that already documents itself does not get a generic template appended
+over the top of it. Only an absent `CLAUDE.md` is seeded from the template.
+
+Because nothing is overwritten, editing a template in a plugin update does *not* reach a
+project that was already initialised. To pick up template changes, run `/flow:uninstall`
+first, then `/flow:init` again.
 
 ## Step 3: Backend bootstrapping
 
@@ -49,11 +54,19 @@ existing `.flow/config.md`, and appends a marked `<!-- flow:begin -->` section t
 - `pm_backend=linear`: tell the user to install/configure the Linear MCP server in their
   `.claude/settings.json`.
 
-`.claude/` is private by default (flow's `private_globs` covers it), so `config.md` is never
-staged by `/flow:pause`. If the user wants it shared with collaborators, point them at
-`SETUP.md` for how to narrow `private_globs`.
+`.flow/config.md` is **shareable project truth** and is staged normally — commit it if
+collaborators should get the same stack setup. Only `.flow/local.md` is machine-private
+(`private_globs` covers it), so machine-specific values belong there, not in `config.md`.
 
 ## Step 4: Report
 
-Relay the script's output verbatim (which files were `created` / `appended` / `present`,
-which stack commands were detected), then recommend `/flow:health` as the next command.
+Relay the script's output verbatim — which files were `created` / `left untouched`, and
+which stack commands were detected.
+
+## Step 5: Verify the setup
+
+Run `/flow:health` straight away rather than suggesting it. Init is exactly the point where
+a wrong answer is cheapest to fix, and health is read-only.
+
+Report only what health flags. If everything passes, one line is enough — do not reprint the
+whole table on top of the Step 4 report.

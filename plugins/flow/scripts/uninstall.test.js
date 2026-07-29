@@ -54,6 +54,29 @@ test('--yes removes config, progress, state and arming markers', () => {
         'an arming marker must never survive uninstall');
 });
 
+test('--keep-progress spares the live session thread', () => {
+    const root = makeProject();
+    run(root, ['--yes', '--keep-progress']);
+
+    assert.ok(fs.existsSync(path.join(root, '.flow', 'session-progress.md')),
+        'the open session must survive when the user chose to keep it');
+    assert.ok(!fs.existsSync(path.join(root, '.flow', 'config.md')),
+        'everything else still goes');
+});
+
+test('session-progress.md is removed by default', () => {
+    const root = makeProject();
+    run(root, ['--yes']);
+    assert.ok(!fs.existsSync(path.join(root, '.flow', 'session-progress.md')));
+});
+
+test('the plan lists session-progress as kept under --keep-progress', () => {
+    const root = makeProject();
+    const out = run(root, ['--keep-progress']);
+    assert.match(out, /keep\s+.flow\/session-progress\.md/,
+        'the dry run must show it being kept, so the choice is visible before applying');
+});
+
 test('session-log.md is kept without --purge and removed with it', () => {
     const kept = makeProject();
     run(kept, ['--yes']);
