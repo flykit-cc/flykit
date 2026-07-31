@@ -55,3 +55,10 @@ data/
 # Note: flow's own docs treat .flow/config.md as shareable if a project wants it.
 # This repo does not — flow here is the author's personal setup, not project truth.
 .flow/
+
+# steuer working spec — derived from one real person's tax data; its own text
+# says it must be sanitized before publishing. Ignored so no over-broad
+# `git add` can reach it (that exact accident happened on 2026-07-31 and took
+# a history purge + GitHub Support ticket to undo). Unignore only a rewritten,
+# sanitized version.
+plugins/steuer/SPEC.md
