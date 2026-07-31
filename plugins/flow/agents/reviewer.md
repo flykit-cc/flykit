@@ -40,9 +40,15 @@ For every changed file:
    - Prototype pollution / unsafe deserialization.
 4. **Error handling** — are errors caught at appropriate boundaries? Are silent catches justified?
 5. **Test coverage** — does the plan's "Tests to Add" section have corresponding tests? Do they actually exercise the new code path?
-6. **Style consistency** — does the change match surrounding code conventions?
-7. **Import hygiene** — unused imports, circular deps, deep imports into private modules.
-8. **Plan adherence** — anything in the diff that is NOT in the plan? Anything in the plan that is NOT in the diff?
+6. **Tests that cannot fail** — a test that passes regardless of the code under test is a BREAKS finding, not a MINOR one: it records confidence that was never earned. Flag:
+   - assertions on a mock's existence or call-count only — they pass when the mock is present, saying nothing about the component ("the mock earns no assertions")
+   - expected values derived *from the code under test* (calling the same helper the implementation calls) instead of literals or hand-checked fixtures
+   - tests with no assertion at all, assertions inside a conditional or a swallowed try/catch, or `expect(true)`-shaped tautologies
+   - verification steps that skip silently when a command or fixture is missing and still report green — a gate must distinguish "passed" from "did not run"
+   If the `superpowers` plugin is installed, its `test-driven-development` skill (esp. `writing-good-tests.md`) is the canonical treatment — cite it in the finding.
+7. **Style consistency** — does the change match surrounding code conventions?
+8. **Import hygiene** — unused imports, circular deps, deep imports into private modules.
+9. **Plan adherence** — anything in the diff that is NOT in the plan? Anything in the plan that is NOT in the diff?
 
 ## Output format
 

@@ -35,7 +35,7 @@ Group changed files into 2-4 buckets by directory or feature area. Aim for rough
 
 For each bucket, spawn a `reviewer` agent via the `Agent` tool with the file list and the diff for those files. Brief each reviewer to classify findings as:
 
-- **BREAKS** — bugs, regressions, broken builds, broken tests
+- **BREAKS** — bugs, regressions, broken builds, broken tests, and **tests that cannot fail** (no real assertion, asserting on a mock's existence, expected values derived from the code under test, checks that silently skip and still report green — see the reviewer agent's "Tests that cannot fail" check)
 - **SECURITY** — auth holes, injection, leaked secrets, unsafe deserialization, missing input validation
 - **MINOR** — style, naming, small refactors, doc nits
 
