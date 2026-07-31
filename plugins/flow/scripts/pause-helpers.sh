@@ -228,16 +228,26 @@ case "$cmd" in
 
   run-verification)
     # Runs build_cmd + test_cmd synchronously (whichever are non-empty) and
-    # reports pass/fail. Called only when the pause-time verification
-    # decision (see commands/pause.md) says to run it.
+    # reports what actually happened. Called only when the pause-time
+    # verification decision (see commands/pause.md) says to run it.
+    #
+    # The output always names which commands ran, because "passed" on its own
+    # cannot distinguish "everything passed" from "nothing was configured, so
+    # nothing ran". It used to print a bare `verification-passed` in both
+    # cases, which meant a project with no test_cmd recorded
+    # `Verification: passed` in its history and let `/flow:pause land` ship on
+    # a gate that had verified nothing. A green signal must never be the
+    # cheapest thing to produce.
     BUILD_CMD="$(flow_extract build_cmd)"
     TEST_CMD="$(flow_extract test_cmd)"
     FAIL=0
     FAILED_LABEL=""
     OUT=""
+    RAN=""
     for pair in "build:$BUILD_CMD" "test:$TEST_CMD"; do
       label="${pair%%:*}"; vcmd="${pair#*:}"
       [ -n "$vcmd" ] || continue
+      RAN="${RAN:+$RAN+}$label"
       if ! vout=$(cd "$REPO_ROOT" && eval "$vcmd" 2>&1); then
         FAIL=1
         [ -z "$FAILED_LABEL" ] && FAILED_LABEL="$label"
@@ -248,13 +258,21 @@ ${vtail}
 "
       fi
     done
+    if [ -z "$RAN" ]; then
+      # Neither command is configured. This is not a pass and must never be
+      # recorded as one; exit 0 because it is not a failure either — the
+      # caller decides whether an unverifiable project may ship.
+      echo "verification-skipped:nothing-configured"
+      exit 0
+    fi
     if [ "$FAIL" -ne 0 ]; then
       echo "verification-failed:$FAILED_LABEL"
       printf '%s\n' "$OUT"
       exit 1
-    else
-      echo "verification-passed"
     fi
+    # e.g. verification-passed:build+test, or verification-passed:build when
+    # test_cmd is unset — so "no tests here" stays visible in the record.
+    echo "verification-passed:$RAN"
     ;;
 
   finish)

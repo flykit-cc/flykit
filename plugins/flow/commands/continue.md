@@ -37,7 +37,7 @@ Also read `$CLAUDE_PROJECT_DIR/.flow/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.
   ```
 
   Then continue straight into the work — do not stop to ask about mode or issue triage; those are decided inline as the session unfolds, not up front.
-- **`exists`:** read `.flow/session-progress.md` — note Goal, open Tasks, Paused at, Next steps, and the `Verification:` line if present. If it says anything other than `passed` (e.g. `not run` or `failed (test_cmd)`), surface that one line in the recap and offer to run `"$HELPERS_PAUSE" run-verification` now (from `${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh`). If `progress-age-days > 7`, also run `"$HELPERS" last-log-titles` and surface the last 3 session titles (headlines only; don't read the log body).
+- **`exists`:** read `.flow/session-progress.md` — note Goal, open Tasks, Paused at, Next steps, and the `Verification:` line if present. If it is anything other than a clean `passed (build+test)` — `not run`, `skipped (…)`, `passed (build only…)`, or `failed (test_cmd)` — surface that one line in the recap and offer to run `"$HELPERS_PAUSE" run-verification` now (from `${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh`). If `progress-age-days > 7`, also run `"$HELPERS" last-log-titles` and surface the last 3 session titles (headlines only; don't read the log body).
 
 ## Step 3: Restore agent handoff files
 

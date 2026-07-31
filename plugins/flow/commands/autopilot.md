@@ -86,6 +86,8 @@ Delegate to **`/flow:pause land`** (it runs CI checks, closes issues, and pushes
 
 `/flow:pause land`'s verification decision (its Step 4) normally asks via `AskUserQuestion` when `stop_check` is unset or `ask` — autopilot can never answer that, so this delegation must never hit it. Per that step's unattended-invocation exception, autopilot treats an unset/`ask` `stop_check` as `always`: verification runs automatically, no question asked. `always`/`never` in config are honoured as configured, also without prompting.
 
+**`verification-skipped:nothing-configured` halts the loop.** Step 4 tells an interactive `land` to stop and ask before shipping an unverified repo, and autopilot cannot answer that question either. So it takes the fail-closed branch: stop the run, leave the work committed but unlanded, and report that neither `build_cmd` nor `test_cmd` is set in `.flow/config.md`. An autonomous loop must not ship code it has no way to check — a human choosing to skip verification is a decision, a robot skipping it is an accident. Configure at least one command, or run `/flow:pause land` by hand.
+
 **`team` mode:** the sprint branch stays open as a PR — Phase 5 loops back to Phase 1 without merging it. The next sprint's branch (Phase 2 step 2) is cut from the same point Phase 0 started from, not from the unmerged PR, so sprints stay independent and reviewable rather than stacking.
 
 ## Phase 5: Cleanup and loop

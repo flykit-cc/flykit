@@ -107,7 +107,38 @@ test('set-verification-mode rejects an unknown value', () => {
 test('run-verification reports pass when build_cmd/test_cmd succeed', () => {
     const root = makeRepo();
     fs.appendFileSync(path.join(root, '.flow', 'config.md'), '- build_cmd: true\n- test_cmd: true\n');
-    assert.equal(run(root, ['run-verification']).trim(), 'verification-passed');
+    assert.equal(run(root, ['run-verification']).trim(), 'verification-passed:build+test');
+});
+
+test('run-verification never reports a pass when nothing is configured', () => {
+    const root = makeRepo();
+    fs.appendFileSync(path.join(root, '.flow', 'config.md'), '- build_cmd:\n- test_cmd:\n');
+
+    const out = run(root, ['run-verification']).trim();
+    assert.equal(out, 'verification-skipped:nothing-configured');
+    assert.ok(!out.includes('passed'),
+        'a project with nothing to run must not record a pass — that is how an unverified session ships');
+});
+
+test('run-verification names which half ran when only one is configured', () => {
+    const buildOnly = makeRepo();
+    fs.appendFileSync(path.join(buildOnly, '.flow', 'config.md'), '- build_cmd: true\n- test_cmd:\n');
+    assert.equal(run(buildOnly, ['run-verification']).trim(), 'verification-passed:build',
+        'a missing test_cmd must stay visible in the record');
+
+    const testOnly = makeRepo();
+    fs.appendFileSync(path.join(testOnly, '.flow', 'config.md'), '- build_cmd:\n- test_cmd: true\n');
+    assert.equal(run(testOnly, ['run-verification']).trim(), 'verification-passed:test');
+});
+
+test('run-verification still fails on a failing test_cmd when build passes', () => {
+    const root = makeRepo();
+    fs.appendFileSync(path.join(root, '.flow', 'config.md'), '- build_cmd: true\n- test_cmd: false\n');
+    assert.throws(() => run(root, ['run-verification']), (err) => {
+        assert.equal(err.status, 1);
+        assert.match(String(err.stdout), /verification-failed:test/);
+        return true;
+    });
 });
 
 test('run-verification reports failure and exits non-zero when build_cmd fails', () => {

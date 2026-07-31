@@ -57,7 +57,20 @@ Deciding whether to run `build_cmd` + `test_cmd` is a human decision, made here 
 "$HELPERS" run-verification    # runs build_cmd + test_cmd; exits non-zero on failure
 ```
 
-- **Passes:** record `Verification: passed` for Step 9. Continue.
+The first output line names what actually ran. Record it verbatim — never flatten it to a
+bare "passed", because that is exactly how an unverified session gets filed as a verified one.
+
+- **`verification-passed:build+test`** — record `Verification: passed (build+test)`. Continue.
+- **`verification-passed:build`** (or `:test`) — only one was configured. Record
+  `Verification: passed (build only, no test_cmd configured)`. Continue, but say the missing
+  half out loud in the Step 12 report: a project shipping with no `test_cmd` should know it.
+- **`verification-skipped:nothing-configured`** — neither `build_cmd` nor `test_cmd` is set,
+  so **nothing ran**. This is not a pass. Record
+  `Verification: skipped (no build_cmd or test_cmd configured)`.
+  - Plain `pause`/`pause local`: continue, mention it once.
+  - **`land`:** stop and ask. Shipping with no verification at all may be fine for a docs-only
+    repo, but it must be a decision the user makes, not a green light they were handed. If
+    they proceed, keep the `skipped` wording in the record — do not upgrade it to `passed`.
 - **Fails:** report the failure concisely (which command, key error lines). Never silently pause on a failing build.
   - **Plain `pause`/`pause local`:** ask whether to fix now or pause anyway (a checkpoint may legitimately save broken WIP). If "pause anyway", record `Verification: failed (<build_cmd|test_cmd>)` for Step 9.
   - **`land`:** ask whether to fix now or abort landing — do not land on a failing build. If aborted, record `Verification: failed (<build_cmd|test_cmd>)` for Step 9 and stop before Step 9 (finish).
@@ -102,7 +115,7 @@ Do this **before** the final commit, not after. Check off the tasks completed th
 - **`land`, everything shipped** (goal accomplished, no open tasks): clear the Goal, Paused at, and Next steps sections. The `finish` helper in Step 10 will then delete the file — a landed session must not leave a stale resume file for `/flow:continue` to pick up.
 - **Open tasks remain, or this is plain `pause`/`pause local`**: keep Goal and the open tasks, refresh `Paused at` and `Next steps`. The helper will keep the file, and the next session resumes from exactly this state.
 
-Also write the verification outcome from Step 4/4a as its own line, e.g. `Verification: passed`, `Verification: not run`, or `Verification: failed (test_cmd)`. `/flow:continue` surfaces anything other than `passed` on resume.
+Also write the verification outcome from Step 4/4a as its own line — one of `Verification: passed (build+test)`, `Verification: passed (build only, no test_cmd configured)`, `Verification: skipped (no build_cmd or test_cmd configured)`, `Verification: not run`, or `Verification: failed (test_cmd)`. `/flow:continue` surfaces anything that is not a clean pass on resume. Keep the qualifier: `passed (build only…)` and `skipped` must never be shortened to `passed`.
 
 **`land` + `workflow_mode: team`:** capture the file's current content now, before trimming — it drafts the PR body in Step 10.5, and the file may be gone by then.
 
