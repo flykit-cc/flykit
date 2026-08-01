@@ -40,7 +40,11 @@ function parseCsvLine(line) {
 }
 
 function readCsv(filePath) {
-    const raw = fs.readFileSync(filePath, 'utf-8');
+    let raw = fs.readFileSync(filePath, 'utf-8');
+    // fs doesn't strip a UTF-8 BOM on decode — left in place it prefixes the
+    // first header (e.g. "﻿date"), which silently breaks that column's
+    // lookups for every row.
+    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
     const lines = raw.split(/\r?\n/).filter(Boolean);
     if (lines.length === 0) return [];
     const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
