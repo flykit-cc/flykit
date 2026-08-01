@@ -63,3 +63,6 @@ data/
 # sanitized version.
 plugins/steuer/SPEC.md
 .serena/
+
+# Superpowers SDD docs (plans/specs) — local only, never published
+docs/superpowers/
