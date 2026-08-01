@@ -62,3 +62,4 @@ data/
 # a history purge + GitHub Support ticket to undo). Unignore only a rewritten,
 # sanitized version.
 plugins/steuer/SPEC.md
+.serena/
