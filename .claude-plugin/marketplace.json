@@ -8,7 +8,7 @@
       "name": "steuer",
       "description": "German freelancer tax filing — fetch transactions, classify with AI, calculate EÜR, guide through ELSTER",
       "source": "./plugins/steuer",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "finance",
       "keywords": ["tax", "germany", "freelancer", "euer", "elster", "wise"],
       "license": "MIT"

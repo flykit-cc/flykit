@@ -1,6 +1,6 @@
 {
   "name": "steuer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "German freelancer tax filing for Claude Code. Fetch transactions from your bank, classify with AI, calculate EÜR, file via ELSTER.",
   "author": {"name": "kaiomp"},
   "homepage": "https://flykit.cc/plugins/steuer",

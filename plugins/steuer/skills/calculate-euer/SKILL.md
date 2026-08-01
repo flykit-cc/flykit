@@ -1,13 +1,13 @@
 ---
 name: calculate-euer
-description: Calculate the EÜR (Einnahmen-Überschuss-Rechnung) from classified transactions — convert USD to EUR via ECB rates, group expenses into German tax categories, and produce numbers ready for ELSTER. Triggered by /steuer:calculate-euer or when the user asks to compute their EÜR / Gewinn.
+description: Calculate the EÜR (Einnahmen-Überschuss-Rechnung) from verdict-classified transactions — convert USD to EUR via ECB rates and total by verdict code. Refuses to run while any group is unresolved. Triggered by /steuer:calculate-euer or when the user asks to compute their EÜR / Gewinn.
 argument-hint: [year]
-allowed-tools: Bash, Read, Write, Edit, AskUserQuestion
+allowed-tools: Bash, Read, Write, AskUserQuestion
 ---
 
 # Calculate EÜR
 
-You are computing the official EÜR numbers for ELSTER from previously classified transactions. The classifier already separated income from expenses; your job is to convert currencies, group by EÜR category, and produce a clean summary.
+You are computing the official EÜR numbers for ELSTER from a classified transactions file. Every group's verdict (business expense, apportioned, private, income, ...) was already decided during `parse-statements` — this step just converts currencies and totals what the verdict map already resolved.
 
 ## Step 1: Determine the Tax Year
 
@@ -32,64 +32,45 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/calculate-euer.js --year <YEAR> --output ./ou
 
 This will:
 1. Read `./output/steuer-<YEAR>-classified.json`.
-2. Fetch ECB rates for the year (single Frankfurter API call).
-3. Convert all USD income/expenses to EUR.
-4. Compute totals.
-5. Write:
-   - `./output/steuer-<YEAR>.csv` — all rows with EUR equivalents
+2. **Gate check first.** If any group's verdict is still `null` (MISSING) or coded `R`, the script refuses to run: it exits with status 2 and prints every offending group, e.g. `MISSING   example rideshare inc  net 480.00 USD out`. **MISSING always blocks**, no matter what flags are passed. If you see this, tell the user: "Some groups are still unresolved — run `/steuer:parse-statements <YEAR>` again to finish classifying them." Do not attempt to work around this yourself.
+3. Fetch ECB reference rates for the year directly from the ECB data API (cached to `./output/ecb-USD-EUR-<YEAR>.csv`, so re-runs are offline).
+4. Convert every non-EUR row to EUR.
+5. Total by verdict code: income = code `I` groups; expenses = code `B` in full and code `A` at its stored `share` (applied once, already baked into the verdict — nothing to re-ask here); `P`/`V`/`N`/`NI`/`M`/`H` are excluded from the EÜR entirely.
+6. Write:
+   - `./output/steuer-<YEAR>.csv` — every row with its EUR equivalent and ECB rate
    - `./output/steuer-<YEAR>.pdf` — formatted report for the Finanzamt
-   - `./output/steuer-<YEAR>-summary.json` — totals and Gewinn
+   - `./output/steuer-<YEAR>-summary.json` — totals, `by_category` (EUR sum per verdict code), and `excluded` (what was left out and why)
 
-## Step 4: Group Expenses by EÜR Category
+### `--include-review`
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/tax-categories.md` to understand the mapping.
+Pass `--include-review` to admit `R`-coded groups **on the income side only** — this does not touch MISSING groups, and does not admit `R` on the expense side. Use it only if the user explicitly wants to file with review items still open (rare — normally go back and resolve them instead):
 
-For each expense in `./output/steuer-<YEAR>-classified.json`, suggest an EÜR category based on the description:
-- SaaS / cloud / domains / AI tools → `edv_kosten` (Zeile 56 / KZ 159)
-- Internet / phone (apply business-use percentage) → `telekommunikation` (Zeile 52 / KZ 155)
-- IHK, GEMA, business insurance → `beitraege_gebuehren` / `versicherungen` (Zeile 53 / KZ 156)
-- Contractor / freelancer payouts → `fremdleistungen` (Zeile 30 / KZ 110)
-- Hardware under 800 EUR net → `gwg_equipment` (Zeile 35 / KZ 146)
-- Marketing / ads → `marketing` (Zeile 56 / KZ 159)
-- Bank fees, misc → `sonstige` (Zeile 65 / KZ 168)
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/calculate-euer.js --year <YEAR> --output ./output --include-review
+```
 
-Use `AskUserQuestion` for ambiguous merchants (max 4 per call).
+## Step 4: Categories Are Already Set — Don't Re-Ask
 
-## Step 5: Apply Partial Deductions
+Expense categorization and apportionment (the `A` share) were decided once, per merchant, in the verdict map during `parse-statements` — do not ask the user again here for business-use percentages or per-expense categories. If a category or share looks wrong, the fix is: edit `./output/verdicts-<YEAR>.json`, re-run `parse-statements` to re-gate and re-freeze `classified.json`, then re-run this script. See `${CLAUDE_PLUGIN_ROOT}/references/tax-categories.md` for the category vocabulary used in the verdict map.
 
-Some categories aren't 100% deductible. Defaults:
-- Internet: 40% business use
-- Phone: 30% business use
+## Step 5: Homeoffice-Pauschale (optional, not transaction-based)
 
-Confirm via `AskUserQuestion`:
-- header: "Deductions"
-- question: "Internet defaults to 40% business, phone to 30%. Keep these or change?"
-- options: "Keep defaults", "Change percentages"
-
-## Step 6: Optional Add-ons
-
-Ask via `AskUserQuestion`:
+This is a flat allowance, not derived from any bank transaction, so the script never computes it. Ask via `AskUserQuestion`:
 - header: "Homeoffice-Pauschale"
 - question: "Claim the Homeoffice-Pauschale (up to 1,260 EUR/year)?"
 - options: "Yes, claim it", "No"
 
-## Step 7: Save Final Summary
+If yes, note the amount separately when you present the summary (Step 6) — it is not written into `steuer-<YEAR>-summary.json`, since that file mirrors exactly what the script computed from transactions. Carry it forward as a plain note for `/steuer:elster-guide`.
 
-Update `./output/steuer-<YEAR>-summary.json` with:
-- `income_total_eur`
-- `expense_total_eur` per category
-- `gewinn_eur` (income minus expenses)
-- ELSTER field map (which Zeile/KZ each total goes to)
+## Step 6: Recap & Next Step
 
-Also write `./output/steuer-<YEAR>-summary.md` — a human-readable table of totals, ready to cross-reference with ELSTER. Use the field reference in `${CLAUDE_PLUGIN_ROOT}/references/elster-fields.md`.
-
-## Step 8: Recap & Next Step
-
-Print:
+Read `./output/steuer-<YEAR>-summary.json` and present:
 - Total income (EUR)
-- Total expenses by category (EUR)
+- Total expenses (EUR), broken down by `by_category`
 - **Gewinn**
-- File paths produced (PDF, CSV, summary)
+- `excluded` block, if non-empty (what was left out and why — usually private/Vorsorge/internal)
+- Homeoffice-Pauschale note, if claimed in Step 5
+- File paths produced (PDF, CSV, summary JSON)
 
 Then suggest: "Run `/steuer:elster-guide <YEAR>` to walk through the ELSTER forms field by field."
 

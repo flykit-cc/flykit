@@ -1,6 +1,6 @@
 # ECB Exchange Rate Methodology
 
-The steuer plugin converts foreign-currency income and expenses to EUR using **European Central Bank (ECB) daily reference rates**, retrieved via the [Frankfurter API](https://api.frankfurter.dev).
+The steuer plugin converts foreign-currency income and expenses to EUR using **European Central Bank (ECB) daily reference rates**, fetched directly from the [ECB Data Portal API](https://data-api.ecb.europa.eu) (the authoritative source) and cached on disk next to your data so re-runs work offline.
 
 ## Why ECB rates?
 
@@ -15,17 +15,17 @@ The Bundesfinanzministerium also publishes monthly reference rates (Umsatzsteuer
 
 ## How conversion works in this plugin
 
-1. **Bulk prefetch.** A single Frankfurter API call fetches the entire year of daily rates:
+1. **Bulk prefetch.** A single ECB Data Portal call fetches the entire year of daily rates (cached to `ecb-USD-EUR-{year}.csv` in your output directory):
 
    ```
-   https://api.frankfurter.dev/v1/{year}-01-01..{year}-12-31?from=USD&to=EUR
+   https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod={year}-01-01&endPeriod={year}-12-31&format=csvdata
    ```
 
 2. **Per-transaction lookup.** For each transaction dated `YYYY-MM-DD`, look up the ECB rate for that date.
 
 3. **Weekend / holiday fallback.** The ECB does not publish rates on weekends or TARGET2 holidays. When a date has no rate, the plugin walks backwards up to 7 days to find the nearest previous trading day. This is the approach accepted by most German Finanzämter for cash-basis (Zufluss) accounting.
 
-4. **Convert.** `EUR amount = original amount × rate_for_date`.
+4. **Convert.** The ECB series quotes **USD per 1 EUR**, so the conversion divides: `EUR amount = original USD amount ÷ rate_for_date`. (Example: $10 at a rate of 1.25 USD/EUR → €8.00.)
 
 5. **Round.** EUR amounts are rounded to 2 decimal places. The exchange rate used is stored alongside the converted value (audit trail).
 
@@ -37,7 +37,7 @@ The PDF report includes a methodology disclaimer on the summary page.
 
 ## Currencies other than USD
 
-The plugin defaults to USD → EUR. To support other currencies, change the `from` parameter when calling `prefetchRates(year, from, to)` in `scripts/rateConverter.js`. Frankfurter supports all currencies the ECB publishes (~30 majors).
+The plugin defaults to USD → EUR. To support other currencies, change the `from` parameter when calling `prefetchRates(year, from, to)` in `scripts/rateConverter.js`. The ECB publishes daily reference rates for ~30 major currencies.
 
 ## Limitations
 
