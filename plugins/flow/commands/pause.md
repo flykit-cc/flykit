@@ -121,7 +121,7 @@ Questions chores (skip when `.flow/questions.md` is absent):
 - Write the questions state line into session-progress.md (from `${CLAUDE_PLUGIN_ROOT}/scripts/questions-helpers.sh state-line ...`).
 - AUDIT, never backfill: if `counts` reports `pending_apply > 0`, list those `Q<n>` ids loudly in the pause report — an answered question whose change never landed is a lost answer in the making.
 - Retire questions whose `issue:` this pause just closed (`retired-because: issue closed`).
-- Rebuild the pointer task from the file (question-protocol.md → Chores).
+- Rebuild the pointer task from the file (`${CLAUDE_PLUGIN_ROOT}/references/question-protocol.md` → Chores).
 
 **`land` + `workflow_mode: team`:** capture the file's current content now, before trimming — it drafts the PR body in Step 10.5, and the file may be gone by then.
 
@@ -160,4 +160,4 @@ Skip this step for plain `pause`/`pause local` — only `land` ships and closes 
 
 ## Step 12: Report
 
-Parse the `commit:` / `push:` / `land:` / `trim:` lines from `finish` and print a tight report (Goal, Progress, Verification, Memory n written, Commit, Push, Land if set, PR URL if `land` + team mode, Issues closed if `land`, Drift warnings if any, Next step). Include drift-check warnings verbatim if it flagged anything — informational, non-blocking.
+Parse the `commit:` / `push:` / `land:` / `trim:` lines from `finish` and print a tight report (Goal, Progress, Verification, Memory n written, Commit, Push, Land if set, PR URL if `land` + team mode, Issues closed if `land`, Drift warnings if any, Questions pending-apply flagged if any (the `Q<n>` ids from Step 9's audit), Next step). Include drift-check warnings verbatim if it flagged anything — informational, non-blocking.
