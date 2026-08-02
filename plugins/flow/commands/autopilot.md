@@ -25,6 +25,8 @@ Read the project's **Known Pitfalls** from `known_pitfalls_path`. Keep the full 
 
 **AskUserQuestion is used ONCE, at launch, for configuration. After that, NEVER again.** No "should I proceed?", no confirmations, no approval gates. This is autopilot.
 
+Questions raised during autopilot (by agents or the loop itself) are FILED into .flow/questions.md only — never presented. They wait for the next interactive session; /flow:continue will surface them.
+
 - Blocked by an external dependency (needs a VPS, API key, paid service, or a business decision)? **Skip the issue**, file a `blocked` ticket on the configured `pm_backend`, continue with the rest. Never write placeholder/stub code to "close" an issue.
 - Uncertain about implementation? Make the best call autonomously.
 - Permission denied? Adjust approach, don't re-ask.

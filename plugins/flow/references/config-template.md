@@ -185,3 +185,12 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 `docs_glob` is where specs/docs live. `route_pattern` is an extended-regex matching newly
 added route/endpoint declarations; the default covers common Express/Nest/Flask/Convex
 shapes — override it for your framework if needed.
+
+---
+
+## Question queue
+
+> Optional. Max questions ever "open" (awaiting the user) at once; further
+> questions wait in the backlog of .flow/questions.md. Blank → 3.
+
+- question_wip:

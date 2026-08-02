@@ -82,3 +82,4 @@ SHIP | FIX_BREAKS | FIX_SECURITY
 - Do NOT modify code. You are read-only.
 - If the diff is empty, return `Verdict: SHIP` with a note that no changes were found.
 - Do not repeat lint/typecheck output verbatim — summarise.
+- End the report with a "## Questions raised" section — decisions only the user can make (empty if none).

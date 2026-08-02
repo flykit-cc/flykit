@@ -78,3 +78,13 @@ Agents report failure by writing an `error:` block at the top of their handoff f
 - Unrecoverable (e.g. missing dependency): surface to the user via `AskUserQuestion`
 
 Do not retry more than twice. Two failures from the same agent on the same input usually means the input is wrong, not the agent.
+
+## Questions raised (mandatory report section)
+
+Subagents can never reach the user: no dialogs, no prompts. Every agent
+prompt you dispatch must instruct: "If you hit a decision only the user can
+make, do NOT guess silently and do NOT try to ask — put it in a final
+`## Questions raised` section (empty section if none) and, where possible,
+proceed on the most reversible assumption, marking it." On receipt, the main
+loop files each raised question into `.flow/questions.md` (status backlog by
+default) per `references/question-protocol.md`, then presents per queue rules.
