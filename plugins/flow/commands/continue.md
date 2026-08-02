@@ -58,7 +58,13 @@ Based on `dev-server-state` (uses `dev_port` from config):
 
 ## Step 6: Summarise + pick where to start
 
-Print a tight recap (Goal, open tasks, Paused at, Next, dev URL, and last sessions if age > 7 days). If the next step is unambiguous, just start. If there are 2–4 plausible next moves, use `AskUserQuestion` with a recommendation. Route the chosen phase through the appropriate agent: `Explore` to map code, `general-purpose` to implement, `reviewer` to check a diff — see `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
+Print a tight recap (Goal, open tasks, Paused at, Next, dev URL, and last sessions if age > 7 days).
+
+Include the questions state: run `${CLAUDE_PLUGIN_ROOT}/scripts/questions-helpers.sh state-line "$CLAUDE_PROJECT_DIR/.flow/questions.md"` and print its output in the recap (skip silently if empty; if UNPARSEABLE, print it loudly and offer to fix the file before anything else). Retire any question whose `issue:` is now closed (`gh issue view <n> --json state` when pm_backend is github) with `retired-because: issue closed`. Rebuild the pointer task from the file (see `${CLAUDE_PLUGIN_ROOT}/references/question-protocol.md` → Chores).
+
+If open questions exist, END the recap turn with the top question's briefing (from `questions-helpers.sh top-open`, following question-protocol.md → Presenting a question) closing with its handoff line — the dialog comes only in the next turn, after the user replies. NEVER put a dialog in the recap turn itself.
+
+Only when no open questions are pending a briefing does the turn continue past the recap: if the next step is unambiguous, just start; if there are 2–4 plausible next moves, use `AskUserQuestion` with a recommendation. Route the chosen phase through the appropriate agent: `Explore` to map code, `general-purpose` to implement, `reviewer` to check a diff — see `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
 
 ## Step 7: Note the resume
 

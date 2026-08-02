@@ -117,6 +117,12 @@ Do this **before** the final commit, not after. Check off the tasks completed th
 
 Also write the verification outcome from Step 4/4a as its own line — one of `Verification: passed (build+test)`, `Verification: passed (build only, no test_cmd configured)`, `Verification: skipped (no build_cmd or test_cmd configured)`, `Verification: not run`, or `Verification: failed (test_cmd)`. `/flow:continue` surfaces anything that is not a clean pass on resume. Keep the qualifier: `passed (build only…)` and `skipped` must never be shortened to `passed`.
 
+Questions chores (skip when `.flow/questions.md` is absent):
+- Write the questions state line into session-progress.md (from `${CLAUDE_PLUGIN_ROOT}/scripts/questions-helpers.sh state-line ...`).
+- AUDIT, never backfill: if `counts` reports `pending_apply > 0`, list those `Q<n>` ids loudly in the pause report — an answered question whose change never landed is a lost answer in the making.
+- Retire questions whose `issue:` this pause just closed (`retired-because: issue closed`).
+- Rebuild the pointer task from the file (question-protocol.md → Chores).
+
 **`land` + `workflow_mode: team`:** capture the file's current content now, before trimming — it drafts the PR body in Step 10.5, and the file may be gone by then.
 
 ## Step 10: One-shot finish (shell)
