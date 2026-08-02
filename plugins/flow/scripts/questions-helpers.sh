@@ -18,7 +18,7 @@ UNPARSEABLE_MSG='questions.md UNPARSEABLE — queue unreliable, fix .flow/questi
 
 validate() {
     [ -f "$1" ] || { echo "absent"; return 0; }
-    awk -v keys="^(${KEYS}): ?" '
+    awk -v keys="^(${KEYS}):( |$)" '
         /^$/ { next }
         /^## Q[0-9]+[[:space:]]*$/ { next }
         /^  / { next }

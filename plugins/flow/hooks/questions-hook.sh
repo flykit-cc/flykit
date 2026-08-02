@@ -7,6 +7,7 @@ set -u
 
 MODE="${1:-}"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+[ -d "$PROJECT_DIR/.flow" ] || exit 0
 HELPERS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts" && pwd)/questions-helpers.sh"
 Q="$PROJECT_DIR/.flow/questions.md"
 CFG="$PROJECT_DIR/.flow/config.md"

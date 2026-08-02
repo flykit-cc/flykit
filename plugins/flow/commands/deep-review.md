@@ -45,6 +45,8 @@ Each reviewer writes to `/tmp/flow-session/review-<bucket>.md`.
 
 Read all `review-*.md` files. Merge into a single report at `/tmp/flow-session/review.md`, deduped, grouped by category, sorted by severity.
 
+Collect each report's "## Questions raised" items and file them into `.flow/questions.md` as `status: backlog`, per `${CLAUDE_PLUGIN_ROOT}/references/question-protocol.md`.
+
 Print a summary to the user: counts per category and the top items.
 
 ## Step 5: Fix loop

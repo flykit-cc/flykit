@@ -64,7 +64,7 @@ Include the questions state: run `${CLAUDE_PLUGIN_ROOT}/scripts/questions-helper
 
 If open questions exist, END the recap turn with the top question's briefing (from `${CLAUDE_PLUGIN_ROOT}/scripts/questions-helpers.sh top-open`, following `${CLAUDE_PLUGIN_ROOT}/references/question-protocol.md` → Presenting a question) closing with its handoff line — the dialog comes only in the next turn, after the user replies. NEVER put a dialog in the recap turn itself.
 
-Only when no open questions are pending a briefing does the turn continue past the recap: if the next step is unambiguous, just start; if there are 2–4 plausible next moves, use `AskUserQuestion` with a recommendation. Route the chosen phase through the appropriate agent: `Explore` to map code, `general-purpose` to implement, `reviewer` to check a diff — see `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
+Only when no open questions are pending a briefing does the turn continue past the recap: if the next step is unambiguous, just start. If there are 2–4 plausible next moves, don't open the dialog in this turn — end it with the recap plus a one-line handoff (e.g. "Several plausible next moves — reply and I'll show the options."); open `AskUserQuestion` with a recommendation next turn, after the user replies. Route the chosen phase through the appropriate agent: `Explore` to map code, `general-purpose` to implement, `reviewer` to check a diff — see `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
 
 ## Step 7: Note the resume
 

@@ -73,6 +73,9 @@ Return structured markdown:
 
 ## Verdict
 SHIP | FIX_BREAKS | FIX_SECURITY
+
+## Questions raised
+- <decision only the user can make> (empty section if none)
 ```
 
 ## Rules
