@@ -24,6 +24,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | `/flow:init`         | One-time setup. Drops config and memory templates into the project.     |
 | `/flow:uninstall`    | Remove what `init` created, so you can start clean or re-init. Dry-run by default. |
 | `/flow:continue`     | Resume an in-progress session from `.flow/session-progress.md`, or start a new one if none exists. |
+| `/flow:questions`    | Work the open-question queue in `.flow/questions.md` — answer a round, list it, reopen or retire an entry. |
 | `/flow:status`       | Read-only "where am I / what's running / what next" — git state, in-flight agents, PR/CI. Changes nothing. |
 | `/flow:pause`        | Snapshot current state to `.flow/session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
 | `/flow:audit`        | Dry-run review: lint, typecheck, security pass without shipping.        |
@@ -69,6 +70,7 @@ Custom agents communicate through files in `/tmp/flow-session/` (e.g. `investiga
 | `memory_path`          | Cross-session memory dir (`/flow:pause` auto-saves here) |
 | `secret_globs`         | Space-separated globs for files the hooks must never read/write/commit |
 | `reap_orphans`         | `true` to enable the orphan-subprocess reaper (default off) |
+| `question_wip`         | Max questions open at once in `.flow/questions.md` (default 3) |
 | `schema_glob` / `docs_glob` / `route_pattern` | Optional drift-check heuristics tuning |
 
 Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adapts to your stack. See `references/config-template.md` for the full annotated template.
@@ -84,6 +86,7 @@ If you deliberately want to share stack settings with collaborators, narrow `pri
 | Hook                | When                       | What                                                                  |
 | ------------------- | -------------------------- | --------------------------------------------------------------------- |
 | `session-context`   | UserPromptSubmit           | Surfaces branch + dirty file count + current goal.                    |
+| `questions-hook`    | SessionStart, UserPromptSubmit | Injects the question-queue's rules and live state (open/backlog counts, next question) into context. |
 | `auto-lint`         | PostToolUse (Write/Edit)   | Runs `format_cmd` + `lint_cmd` on the touched file.                   |
 | `post-bash-reap`    | PostToolUse (Bash)         | Opt-in (`reap_orphans: true`): reaps orphan subprocesses after Bash.  |
 | `file-protection`   | PreToolUse (Write/Edit)    | Blocks writes to env files, lockfiles, `.git/`, and `secret_globs`.   |
@@ -94,6 +97,10 @@ Most hooks fail open when `.flow/config.md` is missing, so `flow` is safe to ins
 Gating expensive or destructive commands (deploys, `terraform apply`, `rm -rf`, ...) is handled by Claude Code's native `permissions.ask`, not a flow hook — see "Approval for costly or destructive commands" in `SETUP.md`.
 
 The lifecycle commands push their mechanics into deterministic shell helpers under `scripts/` (`pause-helpers.sh`, `continue-helpers.sh`, sharing `lib.sh` for config parsing), so the LLM only narrates and decides. `/flow:pause` auto-saves cross-session memory (when `memory_path` is set) and runs a non-blocking doc `drift-check`. Every invocation ends a session through the same `finish` helper: it writes the session's block to `.flow/session-log.md`, then deletes `.flow/session-progress.md` only when nothing is left in flight (open tasks keep the file, so the next session resumes them). `land` additionally runs CI checks, closes issues, and rebases + ff-merges onto the default branch.
+
+## Question queue
+
+`.flow/questions.md` holds questions that need the user's input, so they survive session boundaries instead of being asked once and forgotten. At most `question_wip` (default 3) can be `open` at a time; the rest wait in `backlog` and get promoted as open questions are answered or retired. `/flow:questions` works the queue — answer a round (one dialog at a time), list it, reopen or retire an entry. The `questions-hook` injects the queue's rules and current state into context at session start and on every prompt, so Claude always knows what's pending without re-reading the file. Subagents never ask the user directly; their reports carry a "Questions raised" section that gets filed into the queue when the report comes back. `/flow:continue` and `/flow:pause` retire questions whose issues have closed and keep a pointer task in sync with what's still open. Full contract: `references/question-protocol.md`.
 
 ## Learn more
 
