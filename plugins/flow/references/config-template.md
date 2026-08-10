@@ -159,13 +159,14 @@ See the plugin's `references/known-pitfalls.md` for how to grow this list over t
 
 ## Pause-time verification
 
-> Optional. Controls the verification question `/flow:pause` asks before committing
-> (and, for `land`, before shipping): whether to run `build_cmd` + `test_cmd` now.
-> `ask` (default) — prompt each time, recommending **run** for `land` and **skip**
-> for a plain checkpoint. `always` — run without prompting (choosing "Always run" in
-> the prompt also writes this). `never` — skip without prompting.
-> Builds and test suites cost time, disk, and sometimes money; `ask` lets you decide
-> per pause rather than always paying that cost.
+> Optional. Controls whether `/flow:pause` runs `build_cmd` + `test_cmd` before
+> committing (and, for `land`, before shipping). No mode ever blocks the pause on
+> a prompt — pausing is often the moment you walk away.
+> `ask` (default) — the agent decides from session context: reuse a green run if
+> nothing changed since, skip (recorded as `not run`) for a plain checkpoint,
+> run for `land`. `always` — run every pause. `never` — never run.
+> Builds and test suites cost time, disk, and sometimes money; `ask` spends that
+> only where it buys information.
 
 - stop_check: ask
 

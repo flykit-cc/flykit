@@ -86,19 +86,19 @@ Then commit `.flow/config.md` yourself. flow will no longer block it.
 
 ## 5. (Optional) Tune the pause-time verification prompt
 
-Every `/flow:pause` invocation — including plain checkpoints, not just `land` — asks whether to run `build_cmd` + `test_cmd` before committing. This is a question asked at the moment a human is already deciding to pause, not something a background hook fires blindly.
+Every `/flow:pause` invocation decides whether to run `build_cmd` + `test_cmd` before committing — but it never blocks the pause on a prompt, because pausing is often the moment you leave the computer.
 
-By default (`stop_check: ask`), it prompts each time via `AskUserQuestion`, recommending **Run build + test** for `/flow:pause land` (you're about to ship) and **Skip** for a plain `/flow:pause`/`/flow:pause local` (a checkpoint isn't a ship). Answering "Always run (save to config)" writes `stop_check: always` so it never asks again.
+By default (`stop_check: ask`), the agent decides from session context: if the suite already ran green this session and nothing changed since, that run is reused; a plain `/flow:pause`/`/flow:pause local` otherwise skips (recorded as `Verification: not run`, surfaced on the next `/flow:continue`); a `land` otherwise runs verification — shipping wants a fresh green stamp.
 
-You can set this ahead of time in `.flow/config.md`:
+You can override this in `.flow/config.md`:
 
 ```
-stop_check: always   # run build_cmd + test_cmd every pause, no prompt
-stop_check: never    # never run them, no prompt
-stop_check: ask       # default — prompt each time
+stop_check: always   # run build_cmd + test_cmd every pause
+stop_check: never    # never run them
+stop_check: ask      # default — agent decides from session context
 ```
 
-If verification runs and fails, `/flow:pause` reports the failure and asks whether to fix now or proceed anyway (a checkpoint may save broken WIP; `land` instead asks fix-now-or-abort, since it never ships on a failing build). Either way, the outcome — `passed` / `not run` / `failed (...)` — is written to `.flow/session-progress.md` as a `Verification:` line, and `/flow:continue` surfaces it on the next resume if it isn't `passed`.
+If verification runs and fails, a plain pause saves anyway (a checkpoint may save broken WIP) and leads its report with the failure; `land` asks fix-now-or-abort, since it never ships on a failing build. Either way, the outcome — `passed` / `not run` / `failed (...)` — is written to `.flow/session-progress.md` as a `Verification:` line, and `/flow:continue` surfaces it on the next resume if it isn't `passed`.
 
 ## 6. Approval for costly or destructive commands
 

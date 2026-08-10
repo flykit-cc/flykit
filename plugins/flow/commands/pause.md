@@ -36,7 +36,7 @@ HELPERS="${CLAUDE_PLUGIN_ROOT}/scripts/pause-helpers.sh"
 
 ## Step 4: Verification decision
 
-Deciding whether to run `build_cmd` + `test_cmd` is a human decision, made here at pause time — not something a background hook fires blindly. Resolve it:
+This decision must never block the pause on a dialog — the user pausing is often the user leaving the computer. Resolve it from config and session context:
 
 ```bash
 "$HELPERS" verification-mode    # ask | always | never
@@ -44,12 +44,14 @@ Deciding whether to run `build_cmd` + `test_cmd` is a human decision, made here 
 
 - **`always`** — run verification now (Step 4a), no prompt.
 - **`never`** — skip, no prompt. Record `Verification: not run` for Step 9.
-- **`ask` (default, incl. unset)** — ask via `AskUserQuestion`, with a recommendation based on the invocation: for `land`, recommend **Run build + test** (about to ship); for plain `/flow:pause` and `/flow:pause local`, recommend **Skip** (a checkpoint is not a ship). Options:
-  - `Run build + test`
-  - `Skip`
-  - `Always run (save to config)` — also run now, and persist the choice: `"$HELPERS" set-verification-mode always` (so future pauses never ask again).
+- **`ask` (default, incl. unset)** — the agent decides from what it already knows; no `AskUserQuestion`, ever:
+  - **Fresh green run exists:** if `build_cmd`/`test_cmd` already ran green in this session and nothing changed since (no commits, no edits after that run), reuse it — record `Verification: passed (<what ran>, ran earlier this session, unchanged since)`. Applies to `land` too: re-running an identical suite proves nothing.
+  - **Otherwise, plain `pause`/`pause local`:** skip, record `Verification: not run`. This is safe by design — `/flow:continue` surfaces any non-passed line on the next resume, and a checkpoint may legitimately save unverified WIP.
+  - **Otherwise, `land`:** run verification now (Step 4a), no prompt — shipping wants a fresh green stamp.
 
-**Exception — unattended/non-interactive invocation** (e.g. delegated from `/flow:autopilot`, which never prompts after launch): do not call `AskUserQuestion` at all. Treat an unset/`ask` `stop_check` as `always` for this call only — run verification without asking. `always`/`never` behave exactly as above either way.
+  Users who want different behavior set it in config (`stop_check: always` / `never`), by hand or via `"$HELPERS" set-verification-mode <mode>`.
+
+Unattended invocation (e.g. delegated from `/flow:autopilot`) behaves identically — `ask` never prompts in any mode.
 
 ### Step 4a: Run verification (if the decision was to run it)
 
@@ -72,7 +74,7 @@ bare "passed", because that is exactly how an unverified session gets filed as a
     repo, but it must be a decision the user makes, not a green light they were handed. If
     they proceed, keep the `skipped` wording in the record — do not upgrade it to `passed`.
 - **Fails:** report the failure concisely (which command, key error lines). Never silently pause on a failing build.
-  - **Plain `pause`/`pause local`:** ask whether to fix now or pause anyway (a checkpoint may legitimately save broken WIP). If "pause anyway", record `Verification: failed (<build_cmd|test_cmd>)` for Step 9.
+  - **Plain `pause`/`pause local`:** do not block on a question — pause anyway (a checkpoint may legitimately save broken WIP), record `Verification: failed (<build_cmd|test_cmd>)` for Step 9, and lead the Step 12 report with the failure so it's the first thing seen on return.
   - **`land`:** ask whether to fix now or abort landing — do not land on a failing build. If aborted, record `Verification: failed (<build_cmd|test_cmd>)` for Step 9 and stop before Step 9 (finish).
 
 ## Step 5: `land` only — run remaining CI checks
@@ -115,7 +117,7 @@ Do this **before** the final commit, not after. Check off the tasks completed th
 - **`land`, everything shipped** (goal accomplished, no open tasks): clear the Goal, Paused at, and Next steps sections. The `finish` helper in Step 10 will then delete the file — a landed session must not leave a stale resume file for `/flow:continue` to pick up.
 - **Open tasks remain, or this is plain `pause`/`pause local`**: keep Goal and the open tasks, refresh `Paused at` and `Next steps`. The helper will keep the file, and the next session resumes from exactly this state.
 
-Also write the verification outcome from Step 4/4a as its own line — one of `Verification: passed (build+test)`, `Verification: passed (build only, no test_cmd configured)`, `Verification: skipped (no build_cmd or test_cmd configured)`, `Verification: not run`, or `Verification: failed (test_cmd)`. `/flow:continue` surfaces anything that is not a clean pass on resume. Keep the qualifier: `passed (build only…)` and `skipped` must never be shortened to `passed`.
+Also write the verification outcome from Step 4/4a as its own line — one of `Verification: passed (build+test)`, `Verification: passed (<what ran>, ran earlier this session, unchanged since)`, `Verification: passed (build only, no test_cmd configured)`, `Verification: skipped (no build_cmd or test_cmd configured)`, `Verification: not run`, or `Verification: failed (test_cmd)`. `/flow:continue` surfaces anything that is not a clean pass on resume. Keep the qualifier: `passed (build only…)` and `skipped` must never be shortened to `passed`.
 
 Questions chores (skip when `.flow/questions.md` is absent):
 - Write the questions state line into session-progress.md (from `${CLAUDE_PLUGIN_ROOT}/scripts/questions-helpers.sh state-line ...`).
