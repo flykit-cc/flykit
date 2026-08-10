@@ -40,7 +40,7 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
 - The set of commands (`/flow:init`, `/flow:continue`, etc.)
 - The agent roster and how they hand off
 - The templates for `config.md` and `CLAUDE.md`
-- The handoff convention (`/tmp/flow-session/*.md`)
+- The handoff convention (`.flow/session/*.md`)
 
 **Your project owns:**
 

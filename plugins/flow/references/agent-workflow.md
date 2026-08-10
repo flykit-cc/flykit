@@ -22,7 +22,7 @@ adherence) earns its keep.
 | `Explore` (built-in) | issue or task description, or a search query | inline report | reading code, mapping dependencies, locating symbols/patterns |
 | `superpowers:writing-plans` (skill) | an investigation / requirements | a written plan | turning facts into a stepwise plan with file-level changes |
 | `general-purpose` (built-in) | a plan (or a finding list) | edits on disk | implementation, including small refactors needed to land cleanly |
-| `reviewer` (flow) | a diff + file list | `/tmp/flow-session/review-<bucket>.md` | classifying findings as BREAKS / SECURITY / MINOR |
+| `reviewer` (flow) | a diff + file list | `.flow/session/review-<bucket>.md` | classifying findings as BREAKS / SECURITY / MINOR |
 | `WebSearch` (built-in tool) | a question | inline synthesis | external docs, library references, RFCs |
 
 CI checks (lint/typecheck/build/test) and issue filing are no longer separate agents — they're
@@ -31,7 +31,7 @@ commands straight from `config.md`.
 
 ## Handoff via files
 
-Agents communicate through files in `/tmp/flow-session/`. Never via in-memory state.
+Agents communicate through files in `.flow/session/`. Never via in-memory state.
 
 Why files: agents are spawned as separate `Agent` tool calls. The orchestrator is the only thing that persists between phases. Files are the lowest-friction handoff that survives an agent finishing.
 
@@ -39,7 +39,7 @@ Convention:
 
 - One file per phase
 - Markdown with a clear top-level structure (each agent's prompt enforces it)
-- The orchestrator is responsible for cleaning up `/tmp/flow-session/` at session boundaries (a cold `/flow:continue` clears it, `/flow:pause land` clears it after success)
+- The orchestrator is responsible for cleaning up `.flow/session/` at session boundaries (a cold `/flow:continue` clears it, `/flow:pause land` clears it after success)
 
 ## Deterministic helper layer
 
@@ -56,7 +56,7 @@ These helpers also touch a few session-state files, all under `.flow/`: `session
 Long-running agents (typically `general-purpose` in a multi-file change) are shut down two ways, used together:
 
 1. The orchestrator sends `shutdown_request` via `SendMessage` to a named running agent the moment it reports — this is how `/flow:autopilot` keeps the team lean.
-2. As a fallback for agents that poll the filesystem, the orchestrator writes `/tmp/flow-session/shutdown_request`. A polling agent then finishes the current edit (no half-written files), flushes its handoff file, and exits cleanly.
+2. As a fallback for agents that poll the filesystem, the orchestrator writes `.flow/session/shutdown_request`. A polling agent then finishes the current edit (no half-written files), flushes its handoff file, and exits cleanly.
 
 `/flow:pause` (all modes) creates the shutdown_request file and waits up to 30 seconds before proceeding. This is best-effort — agents that don't poll will simply finish at their own pace.
 

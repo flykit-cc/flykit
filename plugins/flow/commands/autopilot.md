@@ -60,9 +60,9 @@ Questions raised during autopilot (by agents or the loop itself) are FILED into 
 
 1. **Claim issues**: github → `gh issue edit <n> --add-assignee @me`; linear → assign via MCP; local → add `status: in-progress` to the file.
 2. **team mode only**: check out the default branch and pull, then cut the sprint branch from it — `git checkout <default> && git pull && git checkout -b flow/sprint-<n>-<slug>`. Branch from the default branch every sprint, not from the previous sprint's (possibly still-open-PR) branch — `/flow:pause land` doesn't merge in team mode, so the previous branch may not be in `<default>` yet.
-3. **Run the pipeline per issue group.** For each group, drive flow's normal chain via the `Agent` tool, handing off through `/tmp/flow-session/`:
-   - **`Explore`** — map the relevant code, write findings to `/tmp/flow-session/investigation-<group>.md`
-   - **`superpowers:writing-plans`** skill — turn the investigation into an ordered plan, write it to `/tmp/flow-session/plan-<group>.md`
+3. **Run the pipeline per issue group.** For each group, drive flow's normal chain via the `Agent` tool, handing off through `$CLAUDE_PROJECT_DIR/.flow/session/`:
+   - **`Explore`** — map the relevant code, write findings to `$CLAUDE_PROJECT_DIR/.flow/session/investigation-<group>.md`
+   - **`superpowers:writing-plans`** skill — turn the investigation into an ordered plan, write it to `$CLAUDE_PROJECT_DIR/.flow/session/plan-<group>.md`
    - then spawn the **`general-purpose` agents in parallel** (one per file-ownership set) to implement the plan.
 4. **Every implementer spawn prompt MUST include, verbatim:**
    - The issue text (`gh issue view <n>` / MCP / local file) and the plan.
@@ -75,7 +75,7 @@ Questions raised during autopilot (by agents or the loop itself) are FILED into 
    - Lint/format issues surface via Phase 2 step 8's explicit `lint_cmd`/`typecheck_cmd` run; fix errors it reports without waiting for the agent to finish.
    - Implementer reports `BLOCKED` → skip that issue, file a `blocked` ticket with the reason, move on.
    - Implementer reports `PLAN_MISMATCH` / needs context → resolve autonomously via `SendMessage`; if truly impossible, skip and file a ticket.
-7. **Shut down each agent the moment it finishes** — send `shutdown_request` via `SendMessage` (also written to `/tmp/flow-session/shutdown_request` per the protocol). Idle agents waste resources and clutter the terminal.
+7. **Shut down each agent the moment it finishes** — send `shutdown_request` via `SendMessage` (also written to `$CLAUDE_PROJECT_DIR/.flow/session/shutdown_request` per the protocol). Idle agents waste resources and clutter the terminal.
 8. **Fix cross-agent integration issues** (orchestrator, small glue only): registries/index files that need every new entry, import wiring, migration ordering. Then run `lint_cmd` + `typecheck_cmd` and fix failures.
 
 ## Phase 3: Deep review (unless "Skip reviews" was chosen)
@@ -94,7 +94,7 @@ Delegate to **`/flow:pause land`** (it runs CI checks, closes issues, and pushes
 
 ## Phase 5: Cleanup and loop
 
-1. Clear `/tmp/flow-session/*` per `agent-workflow.md`. Do not touch `.flow/session-progress.md` — `/flow:pause land` already settled it (deleted if the sprint shipped everything, kept if tasks remain).
+1. Clear `$CLAUDE_PROJECT_DIR/.flow/session/*` per `agent-workflow.md`. Do not touch `.flow/session-progress.md` — `/flow:pause land` already settled it (deleted if the sprint shipped everything, kept if tasks remain).
 2. **File tickets** for problems discovered during the sprint that were out of scope (tag `blocked` if they need a user decision).
 3. **Capture learnings** (only if `memory_path` is set): if the sprint produced durable cross-session knowledge, write a short memory file under `memory_path` and update its `MEMORY.md` index. Skip routine work.
 4. Output the **Sprint report** (format below).
@@ -148,5 +148,5 @@ Status:         Continuing to sprint... / Codebase clean — autopilot complete 
 - **Strict file ownership** — no two implementers touch the same file in a sprint. If you can't partition cleanly, give the shared file to a single implementer.
 - **Fresh agents per sprint** — never reuse agents across sprints. `shutdown_request` every agent as soon as it reports.
 - **Inject the full Known Pitfalls into every spawn.**
-- **Never** force-push, skip hooks, `git add -A` (stage by name; exclude secrets and `/tmp/flow-session/`), or write fake code to close a ticket.
+- **Never** force-push, skip hooks, `git add -A` (stage by name; exclude secrets and `$CLAUDE_PROJECT_DIR/.flow/session/`), or write fake code to close a ticket.
 - All issue/PM operations go through `pm_backend` — never hardcode `gh` when the backend is linear or local.

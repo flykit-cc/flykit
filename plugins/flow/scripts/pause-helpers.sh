@@ -346,13 +346,15 @@ ${vtail}
     elif [ -z "$CURRENT_BRANCH" ]; then
       PUSH_INFO="PUSH FAILED: no current branch (detached HEAD?)"
     else
-      if git -C "$REPO_ROOT" push 2>&1 | tail -1 > /tmp/flow-pause-push.log; then
-        PUSH_INFO="pushed: $(cat /tmp/flow-pause-push.log)"
-      elif git -C "$REPO_ROOT" push -u origin "$CURRENT_BRANCH" 2>&1 | tail -1 > /tmp/flow-pause-push.log; then
-        PUSH_INFO="pushed (new upstream): $(cat /tmp/flow-pause-push.log)"
+      PUSH_LOG=$(mktemp)
+      if git -C "$REPO_ROOT" push 2>&1 | tail -1 > "$PUSH_LOG"; then
+        PUSH_INFO="pushed: $(cat "$PUSH_LOG")"
+      elif git -C "$REPO_ROOT" push -u origin "$CURRENT_BRANCH" 2>&1 | tail -1 > "$PUSH_LOG"; then
+        PUSH_INFO="pushed (new upstream): $(cat "$PUSH_LOG")"
       else
-        PUSH_INFO="PUSH FAILED: $(cat /tmp/flow-pause-push.log)"
+        PUSH_INFO="PUSH FAILED: $(cat "$PUSH_LOG")"
       fi
+      rm -f "$PUSH_LOG"
     fi
 
     # land = rebase onto the default branch, ff-merge, delete branch.
@@ -365,19 +367,19 @@ ${vtail}
         LAND_INFO="skipped (not on a feature branch)"
       elif ! git -C "$REPO_ROOT" fetch origin "$DEFAULT_BRANCH" 2>/dev/null; then
         LAND_INFO="LAND FAILED: could not fetch origin/$DEFAULT_BRANCH"
-      elif ! git -C "$REPO_ROOT" rebase "origin/$DEFAULT_BRANCH" 2>&1 | tail -3 > /tmp/flow-pause-land.log; then
+      elif { LAND_LOG=$(mktemp); ! git -C "$REPO_ROOT" rebase "origin/$DEFAULT_BRANCH" 2>&1 | tail -3 > "$LAND_LOG"; }; then
         git -C "$REPO_ROOT" rebase --abort 2>/dev/null
-        LAND_INFO="LAND FAILED (rebase conflict): $(cat /tmp/flow-pause-land.log)"
+        LAND_INFO="LAND FAILED (rebase conflict): $(cat "$LAND_LOG")"
       else
         git -C "$REPO_ROOT" push --force-with-lease 2>/dev/null || true
         git -C "$REPO_ROOT" checkout "$DEFAULT_BRANCH" 2>/dev/null
-        if git -C "$REPO_ROOT" merge --ff-only "$FEATURE_BRANCH" 2>&1 | tail -1 > /tmp/flow-pause-land.log; then
+        if git -C "$REPO_ROOT" merge --ff-only "$FEATURE_BRANCH" 2>&1 | tail -1 > "$LAND_LOG"; then
           git -C "$REPO_ROOT" push 2>/dev/null
           git -C "$REPO_ROOT" branch -d "$FEATURE_BRANCH" 2>/dev/null
           git -C "$REPO_ROOT" push origin --delete "$FEATURE_BRANCH" 2>/dev/null || true
           LAND_INFO="landed: $FEATURE_BRANCH -> $DEFAULT_BRANCH, branch deleted"
         else
-          LAND_INFO="LAND FAILED (ff-merge): $(cat /tmp/flow-pause-land.log)"
+          LAND_INFO="LAND FAILED (ff-merge): $(cat "$LAND_LOG")"
         fi
       fi
     fi

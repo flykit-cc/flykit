@@ -41,7 +41,7 @@ Also read `$CLAUDE_PROJECT_DIR/.flow/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.
 
 ## Step 3: Restore agent handoff files
 
-Check `/tmp/flow-session/` for `investigation.md`, `plan.md`, `review.md`. If any are missing but the phase implies they existed, ask whether to regenerate or proceed without them.
+Check `$CLAUDE_PROJECT_DIR/.flow/session/` for `investigation.md`, `plan.md`, `review.md`. If any are missing but the phase implies they existed, ask whether to regenerate or proceed without them.
 
 ## Step 4: Dependencies
 

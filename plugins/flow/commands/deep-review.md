@@ -39,11 +39,11 @@ For each bucket, spawn a `reviewer` agent via the `Agent` tool with the file lis
 - **SECURITY** — auth holes, injection, leaked secrets, unsafe deserialization, missing input validation
 - **MINOR** — style, naming, small refactors, doc nits
 
-Each reviewer writes to `/tmp/flow-session/review-<bucket>.md`.
+Each reviewer writes to `$CLAUDE_PROJECT_DIR/.flow/session/review-<bucket>.md`.
 
 ## Step 4: Synthesize
 
-Read all `review-*.md` files. Merge into a single report at `/tmp/flow-session/review.md`, deduped, grouped by category, sorted by severity.
+Read all `review-*.md` files. Merge into a single report at `$CLAUDE_PROJECT_DIR/.flow/session/review.md`, deduped, grouped by category, sorted by severity.
 
 Collect each report's "## Questions raised" items and file them into `.flow/questions.md` as `status: backlog`, per `${CLAUDE_PLUGIN_ROOT}/references/question-protocol.md`.
 

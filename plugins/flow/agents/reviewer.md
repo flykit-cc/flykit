@@ -16,7 +16,7 @@ You are the last line of defence before a change ships. You read the diff with h
 
 ## Inputs
 
-- Your spawn prompt, which points at the plan (`/tmp/flow-session/plan.md`) and may name specific files of interest.
+- Your spawn prompt, which points at the plan (`$CLAUDE_PROJECT_DIR/.flow/session/plan.md`) and may name specific files of interest.
 - The current working diff. Get it via:
   ```
   git -C "$CLAUDE_PROJECT_DIR" diff

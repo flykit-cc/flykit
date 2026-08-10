@@ -20,7 +20,7 @@ Read `$CLAUDE_PROJECT_DIR/.flow/config.md`. Capture `workflow_mode`, `pm_backend
 
 ## Step 2: Shut down running agents
 
-If background agents are running, send `shutdown_request` (via `SendMessage` and by writing `/tmp/flow-session/shutdown_request`). Wait up to 30s for them to flush their handoff files. See `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
+If background agents are running, send `shutdown_request` (via `SendMessage` and by writing `$CLAUDE_PROJECT_DIR/.flow/session/shutdown_request`). Wait up to 30s for them to flush their handoff files. See `${CLAUDE_PLUGIN_ROOT}/references/agent-workflow.md`.
 
 ## Step 3: Mechanical prep (shell, no LLM)
 
@@ -90,8 +90,8 @@ If either fails, stop. Report the failures to the user and ask whether to fix no
 
 The main agent holds the conversation; subagents don't — so do this directly, and do NOT print the narration in chat:
 
-- **Body:** concrete bullets of what was done this session, cross-checked against `diff-since-pause`. Write to `/tmp/flow-pause-body` via the Write tool.
-- **Title:** a one-line session title (no em-dashes). Write to `/tmp/flow-pause-title`.
+- **Body:** concrete bullets of what was done this session, cross-checked against `diff-since-pause`. Write to `$CLAUDE_PROJECT_DIR/.flow/pause-body` via the Write tool.
+- **Title:** a one-line session title (no em-dashes). Write to `$CLAUDE_PROJECT_DIR/.flow/pause-title`.
 - **Memory candidates** (only if `memory_path` is set): durable cross-session rules — architecture decisions, external-API gotchas, surprising findings. **Cap at 4.** Skip ephemeral single-file edits and anything already in memory.
 
 ## Step 7: Auto-save memory — do NOT ask
@@ -130,7 +130,7 @@ Questions chores (skip when `.flow/questions.md` is absent):
 If `land` and there were prior `wip:` commits on this branch, first ask the user whether to keep them or squash interactively (do not auto-squash).
 
 ```bash
-"$HELPERS" finish /tmp/flow-pause-title /tmp/flow-pause-body "chore: <title>" $MODE_FLAG $CLOSE_ARG
+"$HELPERS" finish "$CLAUDE_PROJECT_DIR/.flow/pause-title" "$CLAUDE_PROJECT_DIR/.flow/pause-body" "chore: <title>" $MODE_FLAG $CLOSE_ARG
 ```
 
 - `$MODE_FLAG`: `--no-push` for `local`; for `land`, `--land` when `workflow_mode: solo` (ff-merge onto the default branch), **empty** when `workflow_mode: team` (push the feature branch only — Step 10.5 opens a PR instead of merging); empty otherwise. Never pass `--land` in team mode: the helper's `--land` path always rebases and ff-merges onto the default branch unconditionally, which would bypass review.
@@ -146,7 +146,7 @@ Solo mode already shipped via the ff-merge in Step 10 — skip this step entirel
 gh pr create --title "<title>" --body "<PR body>" --fill-first
 ```
 
-Draft the PR body from the `.flow/session-progress.md` content captured in Step 9 (Goal, what shipped, key decisions) plus the `/tmp/flow-pause-body` narration. For a non-github `pm_backend`, use the backend's equivalent (e.g. note in the report that Linear/local tracking has no PR concept and the branch was pushed for manual review). Print the PR URL in the final report.
+Draft the PR body from the `.flow/session-progress.md` content captured in Step 9 (Goal, what shipped, key decisions) plus the `$CLAUDE_PROJECT_DIR/.flow/pause-body` narration. For a non-github `pm_backend`, use the backend's equivalent (e.g. note in the report that Linear/local tracking has no PR concept and the branch was pushed for manual review). Print the PR URL in the final report.
 
 ## Step 11: `land` only — close issues
 

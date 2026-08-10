@@ -28,7 +28,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | `/flow:status`       | Read-only "where am I / what's running / what next" — git state, in-flight agents, PR/CI. Changes nothing. |
 | `/flow:pause`        | Snapshot current state to `.flow/session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
 | `/flow:audit`        | Dry-run review: lint, typecheck, security pass without shipping.        |
-| `/flow:cleanup`      | Tidy stray branches, stale session files, and `/tmp/flow-session/`.     |
+| `/flow:cleanup`      | Tidy stray branches, stale session files, and `.flow/session/`.     |
 | `/flow:health`       | Inspect the project's flow setup and report missing pieces.             |
 | `/flow:deep-review`  | Spawn the reviewer agent with extra rigor on the working diff.          |
 | `/flow:flawz`        | Pressure-test a plan/spec/design for real flaws before you act on it.   |
@@ -46,7 +46,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | `superpowers:writing-plans`    | Turn an investigation into a precise, ordered implementation plan.     |
 | `WebSearch` (built-in tool)    | External research with cited sources.                                  |
 
-Custom agents communicate through files in `/tmp/flow-session/` (e.g. `investigation.md`, `plan.md`). Each is spawned with no conversation history — its instructions are self-contained. CI checks and issue filing are inline steps in the commands that need them, not separate agents.
+Custom agents communicate through files in `.flow/session/` (e.g. `investigation.md`, `plan.md`). Each is spawned with no conversation history — its instructions are self-contained. CI checks and issue filing are inline steps in the commands that need them, not separate agents.
 
 ## How `config.md` works
 

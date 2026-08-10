@@ -20,7 +20,7 @@ Spawn the built-in `Explore` agent (breadth: "very thorough"). Brief it to scan 
 - Dead code (unreferenced exports, unreachable branches, unused dependencies)
 - Drift from documented patterns (violations of the project's known pitfalls list)
 
-Output goes to `/tmp/flow-session/audit.md`, one finding per entry, each with: `title`, `severity` (High/Medium/Low), `path:line`, `evidence`, `suggested fix`.
+Output goes to `$CLAUDE_PROJECT_DIR/.flow/session/audit.md`, one finding per entry, each with: `title`, `severity` (High/Medium/Low), `path:line`, `evidence`, `suggested fix`.
 
 ## Step 3: Dedup against existing issues
 
