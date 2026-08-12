@@ -73,6 +73,26 @@ test('two Goal sections are flagged as stale blocks', () => {
     assert.strictEqual(out, 'exists:stale-blocks=4');
 });
 
+test('stacked NEXT blocks are flagged even when Goal and Paused at appear once', () => {
+    // The shape actually reported from the field: the file kept one Goal and one
+    // Paused at, but every session appended its own NEXT block. A resume reads the
+    // first one and works from a plan several sessions old.
+    const body = [
+        '## Goal', 'Ship the thing.', '',
+        '### NEXT (session 1)', '- old thing', '',
+        '### NEXT (session 2)', '- older thing', '',
+        '## Next steps', '- the current thing', '',
+        'Paused at: 2026-08-12', '',
+    ].join('\n');
+
+    assert.match(checkProgress(makeRepo(body)), /^exists:stale-blocks=\d+$/);
+});
+
+test('a single Next steps section is not flagged', () => {
+    const body = '## Goal\nShip it.\n\n## Next steps\n- one thing\n\nPaused at: 2026-08-12\n';
+    assert.strictEqual(checkProgress(makeRepo(body)), 'exists');
+});
+
 test('a duplicated Paused at alone is enough to flag', () => {
     const body = '## Goal\nOne goal.\n\nPaused at: 2026-07-01\n\nPaused at: 2026-08-12\n';
     assert.strictEqual(checkProgress(makeRepo(body)), 'exists:stale-blocks=3');

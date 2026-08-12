@@ -300,6 +300,38 @@ ${vtail}
       COMMIT_MSG="$COMMIT_MSG"$'\n\n'"$CLOSE_TOKEN"
     fi
 
+    # PRE-FLIGHT: refuse before mutating anything.
+    #
+    # Everything below this point writes or deletes: the log block, the narration
+    # files, the shutdown marker, session-progress.md. Running the guards only
+    # after that means a refused pause still leaves a history block for a pause
+    # that never happened, and can delete session state with no commit to show
+    # for it. Validate first, mutate second.
+    #
+    # The candidate set is what the staging loop below would end up with: paths
+    # already in the index, plus working-tree and untracked paths that are not
+    # private (the loop skips those).
+    PREFLIGHT_STAGED=$(git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null || true)
+    PREFLIGHT_NEW=""
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      flow_path_is_private "$f" && continue
+      PREFLIGHT_NEW="${PREFLIGHT_NEW}${f}
+"
+    done < <( { git -C "$REPO_ROOT" diff --name-only HEAD; git -C "$REPO_ROOT" ls-files --others --exclude-standard; } 2>/dev/null )
+
+    if [ -n "$SECRET_RE" ] && printf '%s\n%s' "$PREFLIGHT_STAGED" "$PREFLIGHT_NEW" | grep -qE "$SECRET_RE"; then
+      echo "FINISH ABORTED: staged secrets detected. Run \`git reset\` and check .gitignore." >&2
+      exit 2
+    fi
+    # Private paths can only reach the index by being staged before finish ran —
+    # the loop below never adds them itself.
+    if [ -n "$PRIVATE_RE" ] && printf '%s' "$PREFLIGHT_STAGED" | grep -qE "$PRIVATE_RE"; then
+      echo "FINISH ABORTED: private paths are staged. Run \`git reset\` — these must never be pushed." >&2
+      printf '%s' "$PREFLIGHT_STAGED" | grep -E "$PRIVATE_RE" | sed 's/^/  /' >&2
+      exit 2
+    fi
+
     "$0" log-block "$TITLE_FILE" "$BODY_FILE" >/dev/null
 
     # The narration files are single-use. Left behind, a later pause that skipped

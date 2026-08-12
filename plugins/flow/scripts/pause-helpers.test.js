@@ -115,6 +115,34 @@ test('a second finish with no fresh narration fails loudly instead of relogging 
         'the same narration must never be logged twice under two different dates');
 });
 
+test('an aborted finish mutates nothing — no log block, narration intact', () => {
+    // The guards are the whole point of finish. Anything written or deleted before
+    // they run is work done on a pause that was never allowed to happen: a history
+    // block for a pause that did not occur, and (when the goal is met) a deleted
+    // session-progress.md with no commit to show for it.
+    const root = makeRepo();
+    const titleFile = path.join(root, '.flow', 'pause-title');
+    const bodyFile = path.join(root, '.flow', 'pause-body');
+    fs.writeFileSync(titleFile, 'Session one\n');
+    fs.writeFileSync(bodyFile, '- did a thing\n');
+    // A progress file with nothing in flight — trim would delete it.
+    fs.writeFileSync(path.join(root, '.flow', 'session-progress.md'), '# Session\n');
+    fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude', 'settings.json'), '{}\n');
+    git(root, ['add', '-f', '.claude/settings.json']);
+
+    assert.throws(() => execFileSync('bash', [HELPERS, 'finish', titleFile, bodyFile, 'chore: x', '--no-push'], {
+        encoding: 'utf8', cwd: root, env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: 'pipe',
+    }), (err) => err.status === 2);
+
+    assert.ok(!fs.existsSync(path.join(root, '.flow', 'session-log.md')),
+        'a pause that was refused must not leave a block in the history log');
+    assert.ok(fs.existsSync(titleFile) && fs.existsSync(bodyFile),
+        'narration must survive so the retry does not have to reconstruct it');
+    assert.ok(fs.existsSync(path.join(root, '.flow', 'session-progress.md')),
+        'session state must not be destroyed by a pause that never committed');
+});
+
 function run(root, args) {
     return execFileSync('bash', [HELPERS, ...args], {
         encoding: 'utf8',

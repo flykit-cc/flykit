@@ -32,8 +32,12 @@ case "$cmd" in
     # Count sections, not lines: a long file is fine, a duplicated one is not.
     GOALS=$(grep -cE '^#+ *Goal' "$PROGRESS" 2>/dev/null || true)
     PAUSED=$(grep -cE '^#+ *Paused|^[[:space:]]*\*{0,2}Paused at' "$PROGRESS" 2>/dev/null || true)
-    STALE=$(( ${GOALS:-0} + ${PAUSED:-0} ))
-    if [ "${GOALS:-0}" -gt 1 ] || [ "${PAUSED:-0}" -gt 1 ]; then
+    # Next-steps blocks stack the same way and are the shape seen in the field:
+    # one Goal, one Paused at, and a NEXT section per session. A resume reads the
+    # first and works from a plan several sessions old.
+    NEXTS=$(grep -ciE '^#+ *next' "$PROGRESS" 2>/dev/null || true)
+    STALE=$(( ${GOALS:-0} + ${PAUSED:-0} + ${NEXTS:-0} ))
+    if [ "${GOALS:-0}" -gt 1 ] || [ "${PAUSED:-0}" -gt 1 ] || [ "${NEXTS:-0}" -gt 1 ]; then
       echo "exists:stale-blocks=$STALE"
     else
       echo "exists"
