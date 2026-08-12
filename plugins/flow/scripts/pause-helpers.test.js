@@ -143,6 +143,28 @@ test('an aborted finish mutates nothing — no log block, narration intact', () 
         'session state must not be destroyed by a pause that never committed');
 });
 
+test('the secret abort names the file and does not tell you to unstage an unstaged one', () => {
+    // The pre-flight fires before staging, so the usual offender is an untracked
+    // working-tree file. Telling the user to `git reset` it sends them round a
+    // loop that changes nothing, and not naming it leaves them guessing which.
+    const root = makeRepo();
+    const titleFile = path.join(root, '.flow', 'pause-title');
+    const bodyFile = path.join(root, '.flow', 'pause-body');
+    fs.writeFileSync(titleFile, 'Session one\n');
+    fs.writeFileSync(bodyFile, '- body\n');
+    fs.writeFileSync(path.join(root, ['.e', 'nv'].join('')), 'KEY=redacted\n');
+
+    assert.throws(() => execFileSync('bash', [HELPERS, 'finish', titleFile, bodyFile, 'chore: x', '--no-push'], {
+        encoding: 'utf8', cwd: root, env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: 'pipe',
+    }), (err) => {
+        const msg = String(err.stderr);
+        assert.match(msg, /\.env/, 'must name the offending path');
+        assert.doesNotMatch(msg, /staged secrets detected/,
+            'must not claim the file is staged when the pre-flight caught it unstaged');
+        return true;
+    });
+});
+
 function run(root, args) {
     return execFileSync('bash', [HELPERS, ...args], {
         encoding: 'utf8',

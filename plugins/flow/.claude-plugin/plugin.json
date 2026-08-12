@@ -1,6 +1,6 @@
 {
   "name": "flow",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Reusable AI dev workflow for Claude Code: orchestrated agents, session lifecycle, deep reviews, and project-aware slash commands.",
   "author": {
     "name": "kaiomp"

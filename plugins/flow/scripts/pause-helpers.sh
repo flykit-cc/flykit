@@ -321,7 +321,12 @@ ${vtail}
     done < <( { git -C "$REPO_ROOT" diff --name-only HEAD; git -C "$REPO_ROOT" ls-files --others --exclude-standard; } 2>/dev/null )
 
     if [ -n "$SECRET_RE" ] && printf '%s\n%s' "$PREFLIGHT_STAGED" "$PREFLIGHT_NEW" | grep -qE "$SECRET_RE"; then
-      echo "FINISH ABORTED: staged secrets detected. Run \`git reset\` and check .gitignore." >&2
+      # This fires before staging, so the offender is usually an untracked
+      # working-tree file that `git reset` would not touch. Name it, and give
+      # advice that fits both origins.
+      echo "FINISH ABORTED: these files match secret_globs and would be committed:" >&2
+      printf '%s\n%s' "$PREFLIGHT_STAGED" "$PREFLIGHT_NEW" | grep -E "$SECRET_RE" | sed 's/^/  /' >&2
+      echo "Add them to .gitignore (or remove them); if one is already staged, \`git reset\` it first." >&2
       exit 2
     fi
     # Private paths can only reach the index by being staged before finish ran —
