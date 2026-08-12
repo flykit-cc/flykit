@@ -39,15 +39,16 @@ Convention:
 
 - One file per phase
 - Markdown with a clear top-level structure (each agent's prompt enforces it)
-- The orchestrator is responsible for cleaning up `.flow/session/` at session boundaries (a cold `/flow:continue` clears it, `/flow:pause land` clears it after success)
+- A handoff is spent once its phase lands. `/flow:continue` runs `continue-helpers.sh stale-handoffs`, which names every file in `.flow/session/` older than `state/last-pause`; those are deleted rather than read. **Never trust a handoff without that check** — a `plan.md` from a previous session is indistinguishable from the current one by content alone, and an implementer will build against it.
+- `shutdown_request` is exempt from the staleness check (it's a control marker, not a phase handoff) and is cleared by `pause-helpers.sh finish` instead, so the next session's agents never inherit a standing order to exit.
 
 ## Deterministic helper layer
 
 Commands push their *mechanics* into shell helpers under `${CLAUDE_PLUGIN_ROOT}/scripts/` so the LLM only narrates and decides. Each helper is a black-box CLI with subcommands that print results to stdout — no tokens spent on git plumbing.
 
 - `pause-helpers.sh` — `changed-files`, `diff-since-pause`, `write-marker`/`read-marker`, `log-block`, `trim-or-delete-progress`, `drift-check`, `save-memory`, `finish`. Used by `/flow:pause` (all modes, including `land`).
-- `continue-helpers.sh` — `check-progress`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
-- `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.flow/config.md` (`flow_extract`, `flow_secret_globs`, `flow_dev_port`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
+- `continue-helpers.sh` — `check-progress`, `stale-handoffs`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
+- `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.flow/config.md` (`flow_extract`, `flow_secret_globs`, `flow_private_globs`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
 
 These helpers also touch a few session-state files, all under `.flow/`: `session-log.md` (append-only dated blocks) and `state/last-pause` (the pause marker).
 

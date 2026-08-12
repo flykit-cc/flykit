@@ -15,12 +15,22 @@ The `flow` plugin is a **workflow backbone**. It does not know your stack. Your 
 <your-project>/.flow/                (written by /flow:init, removed by /flow:uninstall)
   config.md                          workflow + stack commands — SHAREABLE, commit it
   local.md                           machine-local overrides — private, never committed
-  session-progress.md                created by /flow:continue (cold start); settled on
-                                     /flow:pause land — deleted when everything shipped,
-                                     kept while tasks remain
+  session-progress.md                CURRENT STATE ONLY — one Goal, one Paused at, one
+                                     Next steps. Created by /flow:continue (cold start),
+                                     rewritten whole (never appended) by /flow:pause in
+                                     every mode — deleted once the goal is met with no
+                                     open tasks, kept while tasks remain. History lives
+                                     in session-log.md, never here.
   session-log.md                     dated session blocks, newest first (written by
-                                     /flow:pause, all modes)
-  state/last-pause                   pause marker (HEAD/branch/timestamp)
+                                     /flow:pause, all modes) — the only history file
+  questions.md                       WIP-limited open-question queue (question-protocol.md)
+  session/                           agent handoffs, one file per phase. Spent once the
+                                     phase lands; /flow:continue drops anything older
+                                     than state/last-pause instead of reading it
+  pause-title, pause-body            this pause's narration, consumed by `finish` —
+                                     transient, never present between sessions
+  state/last-pause                   pause marker (HEAD/branch/timestamp); also the
+                                     freshness boundary for session/ handoffs
   .allow-*                           one-shot arming markers, never committed
 
 <your-project>/

@@ -301,6 +301,17 @@ ${vtail}
     fi
 
     "$0" log-block "$TITLE_FILE" "$BODY_FILE" >/dev/null
+
+    # The narration files are single-use. Left behind, a later pause that skipped
+    # the narration step relogs THIS session's block under a NEW date — silently
+    # fabricating history in the one file that is supposed to be trustworthy.
+    # Consuming them turns that into log-block's loud missing-file error instead.
+    rm -f "$TITLE_FILE" "$BODY_FILE"
+
+    # A shutdown_request that outlives its session tells the next session's
+    # polling agents to exit before they do any work (see agent-workflow.md).
+    rm -f "$REPO_ROOT/.flow/session/shutdown_request"
+
     TRIM_RESULT=$("$0" trim-or-delete-progress)
 
     # Stage uncommitted files individually (never `git add -A`), skipping paths

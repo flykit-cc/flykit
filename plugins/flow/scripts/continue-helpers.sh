@@ -3,7 +3,8 @@
 # Stack-agnostic: dev port and commands come from .flow/config.md.
 #
 # Usage:
-#   continue-helpers.sh check-progress      # exists | missing
+#   continue-helpers.sh check-progress      # exists | exists:stale-blocks=<n> | missing
+#   continue-helpers.sh stale-handoffs      # handoff files in .flow/session/ older than the last pause
 #   continue-helpers.sh progress-age-days   # integer days since .flow/session-progress.md mtime
 #   continue-helpers.sh last-log-titles     # last 3 dated titles from .flow/session-log.md
 #   continue-helpers.sh dev-server-state    # running:<pid> | port-taken:<cwd> | free | no-port
@@ -23,7 +24,35 @@ cmd="${1:-}"
 
 case "$cmd" in
   check-progress)
-    [ -f "$PROGRESS" ] && echo "exists" || echo "missing"
+    if [ ! -f "$PROGRESS" ]; then echo "missing"; exit 0; fi
+    # session-progress.md holds CURRENT state only — exactly one Goal and one
+    # Paused-at. More than one of either means a past pause appended instead of
+    # rewriting, which is how the file grows without bound and how the parsers
+    # (session-context.sh, status-helpers.sh) end up reading the OLDEST goal.
+    # Count sections, not lines: a long file is fine, a duplicated one is not.
+    GOALS=$(grep -cE '^#+ *Goal' "$PROGRESS" 2>/dev/null || true)
+    PAUSED=$(grep -cE '^#+ *Paused|^[[:space:]]*\*{0,2}Paused at' "$PROGRESS" 2>/dev/null || true)
+    STALE=$(( ${GOALS:-0} + ${PAUSED:-0} ))
+    if [ "${GOALS:-0}" -gt 1 ] || [ "${PAUSED:-0}" -gt 1 ]; then
+      echo "exists:stale-blocks=$STALE"
+    else
+      echo "exists"
+    fi
+    ;;
+
+  stale-handoffs)
+    SESSION_DIR="$REPO_ROOT/.flow/session"
+    MARKER="$REPO_ROOT/.flow/state/last-pause"
+    # Without a pause marker there is no session boundary to judge against, so
+    # nothing can be called stale.
+    if [ ! -d "$SESSION_DIR" ] || [ ! -f "$MARKER" ]; then exit 0; fi
+    for f in "$SESSION_DIR"/*; do
+      [ -f "$f" ] || continue
+      BASE=$(basename "$f")
+      # shutdown_request is a control marker, not a phase handoff.
+      if [ "$BASE" = "shutdown_request" ]; then continue; fi
+      if [ "$f" -ot "$MARKER" ]; then echo "$BASE"; fi
+    done
     ;;
 
   progress-age-days)
@@ -41,7 +70,7 @@ case "$cmd" in
   dev-server-state)
     # Needs a pinned port (config: dev_port) and lsof. Without either we can't
     # tell, so we say so rather than guess.
-    PORT="$(flow_dev_port)"
+    PORT="$(flow_extract dev_port)"
     if [ -z "$PORT" ]; then echo "no-port"; exit 0; fi
     if ! command -v lsof >/dev/null 2>&1; then echo "no-port"; exit 0; fi
     PID=$(lsof -ti:"$PORT" 2>/dev/null | head -1 || true)

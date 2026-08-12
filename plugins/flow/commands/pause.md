@@ -112,10 +112,14 @@ If new top-level directories, new commands, or new conventions were introduced t
 
 ## Step 9: Settle .flow/session-progress.md
 
-Do this **before** the final commit, not after. Check off the tasks completed this session, then:
+Do this **before** the final commit, not after.
 
-- **`land`, everything shipped** (goal accomplished, no open tasks): clear the Goal, Paused at, and Next steps sections. The `finish` helper in Step 10 will then delete the file — a landed session must not leave a stale resume file for `/flow:continue` to pick up.
-- **Open tasks remain, or this is plain `pause`/`pause local`**: keep Goal and the open tasks, refresh `Paused at` and `Next steps`. The helper will keep the file, and the next session resumes from exactly this state.
+**Read `$CLAUDE_PROJECT_DIR/.flow/session-progress.md` first — always, even if you think you remember it.** After a long session or a compaction the file is no longer in context, and this step rewrites it wholesale. Every `- [ ]` in that file is carried forward verbatim unless this session actually completed it. Never reconstruct the task list from memory.
+
+Then **rewrite the whole file with `Write`** (not `Edit`, never append). It holds **current state only** — exactly one Goal, one `Paused at`, one `Next steps`. What was *done* belongs in `.flow/session-log.md`, which Step 10 writes for you; duplicating it here is what grows the file until `/flow:continue` resumes from a stale block.
+
+- **Goal accomplished and no open tasks remain** — regardless of `land`, `local`, or plain pause: clear the Goal, Paused at, and Next steps sections. The `finish` helper in Step 10 then deletes the file. A finished goal must not leave a resume file for `/flow:continue` to pick up, and a checkpoint pause is no less finished than a landed one.
+- **Open tasks remain**: keep Goal and the open tasks, rewrite `Paused at` and `Next steps` to *this* pause. The helper keeps the file, and the next session resumes from exactly this state.
 
 Also write the verification outcome from Step 4/4a as its own line — one of `Verification: passed (build+test)`, `Verification: passed (<what ran>, ran earlier this session, unchanged since)`, `Verification: passed (build only, no test_cmd configured)`, `Verification: skipped (no build_cmd or test_cmd configured)`, `Verification: not run`, or `Verification: failed (test_cmd)`. `/flow:continue` surfaces anything that is not a clean pass on resume. Keep the qualifier: `passed (build only…)` and `skipped` must never be shortened to `passed`.
 

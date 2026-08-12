@@ -67,6 +67,54 @@ test('finish aborts when a private path is already staged', () => {
     });
 });
 
+test('finish clears the shutdown_request marker so the next session does not inherit it', () => {
+    const root = makeRepo();
+    const sessionDir = path.join(root, '.flow', 'session');
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionDir, 'shutdown_request'), '1\n');
+    fs.writeFileSync(path.join(root, 'src.ts'), 'export const a = 1;\n');
+
+    runFinish(root);
+
+    assert.ok(!fs.existsSync(path.join(sessionDir, 'shutdown_request')),
+        'a stale shutdown_request makes next session\'s agents exit before doing any work');
+});
+
+test('finish consumes the narration files so a later pause cannot log stale text', () => {
+    const root = makeRepo();
+    const titleFile = path.join(root, '.flow', 'pause-title');
+    const bodyFile = path.join(root, '.flow', 'pause-body');
+    fs.writeFileSync(titleFile, 'Session one\n');
+    fs.writeFileSync(bodyFile, '- did the first thing\n');
+
+    execFileSync('bash', [HELPERS, 'finish', titleFile, bodyFile, 'chore: one', '--no-push'], {
+        encoding: 'utf8', cwd: root, env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: 'pipe',
+    });
+
+    assert.ok(!fs.existsSync(titleFile), 'pause-title must not survive into the next pause');
+    assert.ok(!fs.existsSync(bodyFile), 'pause-body must not survive into the next pause');
+});
+
+test('a second finish with no fresh narration fails loudly instead of relogging the old block', () => {
+    const root = makeRepo();
+    const titleFile = path.join(root, '.flow', 'pause-title');
+    const bodyFile = path.join(root, '.flow', 'pause-body');
+    fs.writeFileSync(titleFile, 'Session one\n');
+    fs.writeFileSync(bodyFile, '- did the first thing\n');
+    const finish = () => execFileSync('bash', [HELPERS, 'finish', titleFile, bodyFile, 'chore: x', '--no-push'], {
+        encoding: 'utf8', cwd: root, env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: 'pipe',
+    });
+
+    finish();
+    fs.writeFileSync(path.join(root, 'src.ts'), 'export const a = 1;\n');
+
+    assert.throws(finish, /log-block needs/i);
+
+    const log = fs.readFileSync(path.join(root, '.flow', 'session-log.md'), 'utf8');
+    assert.equal(log.match(/Session one/g).length, 1,
+        'the same narration must never be logged twice under two different dates');
+});
+
 function run(root, args) {
     return execFileSync('bash', [HELPERS, ...args], {
         encoding: 'utf8',
