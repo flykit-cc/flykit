@@ -44,15 +44,15 @@ Also read `$CLAUDE_PROJECT_DIR/.flow/config.md` and `$CLAUDE_PROJECT_DIR/CLAUDE.
 
 Check `$CLAUDE_PROJECT_DIR/.flow/session/` for `investigation.md`, `plan.md`, `review*.md`. If any are missing but the phase implies they existed, ask whether to regenerate or proceed without them.
 
-**Never trust a handoff without checking its age first** — a `plan.md` from a previous session reads exactly like the current one, and an agent will implement against it:
+**Never trust a handoff without sweeping first** — a `plan.md` from a previous session reads exactly like the current one, and an agent will implement against it:
 
 ```bash
-"$HELPERS" stale-handoffs      # names any handoff older than .flow/state/last-pause
+"$HELPERS" sweep-handoffs      # archives spent handoffs; prints what it moved
 ```
 
-Anything it names predates the last pause and is spent. Delete those files (`rm`) and say which ones in the recap; regenerate the phase if the work still needs them. Only files it does *not* name count as this session's.
+This is not advisory and there is nothing to decide. It moves every handoff older than `.flow/state/last-pause` into `.flow/session/spent/` and prints the names. Whatever is left in `.flow/session/` afterwards is this session's — use those, regenerate any phase you still need, and name the swept files in the recap.
 
-If the first line is **`no-pause-marker`**, this project has never completed a pause, so there is no boundary to date the handoffs that follow. Do **not** treat them as current and do **not** delete them blind — say how many there are and how old (`ls -la`), and ask whether they belong to the session being resumed. "Cannot tell" must never render as "all fresh".
+Never `rm` a handoff yourself and never judge one by eye. If the first line is **`no-pause-marker`**, the project has never completed a pause, so nothing could be dated and *everything* was swept — that is deliberate. Do not go fishing in `spent/` to second-guess it; regenerate instead. Sweeping moves rather than deletes precisely so that failing closed is cheap: recovering a file is one `mv`, while a stale plan implemented in full is not.
 
 ## Step 4: Dependencies
 

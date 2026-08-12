@@ -99,7 +99,7 @@ test('a duplicated Paused at alone is enough to flag', () => {
 });
 
 function staleHandoffs(root) {
-    return execFileSync('bash', [HELPERS, 'stale-handoffs'], {
+    return execFileSync('bash', [HELPERS, 'sweep-handoffs'], {
         encoding: 'utf8',
         cwd: root,
         env: { ...process.env, CLAUDE_PROJECT_DIR: root },
@@ -127,60 +127,90 @@ function markPause(root) {
     fs.writeFileSync(path.join(dir, 'last-pause'), 'abc123 main 2026-08-12T00:00:00Z\n');
 }
 
-test('a handoff written before the last pause is reported stale', () => {
+/** Files still sitting in .flow/session/ after a sweep. */
+function remaining(root) {
+    const d = path.join(root, '.flow', 'session');
+    return fs.readdirSync(d).filter((f) => f !== 'spent').sort();
+}
+
+/** Files the sweep archived, with their content. */
+function archived(root) {
+    const d = path.join(root, '.flow', 'session', 'spent');
+    if (!fs.existsSync(d)) return [];
+    return fs.readdirSync(d).sort();
+}
+
+test('a handoff older than the last pause is swept aside', () => {
     const root = makeRepo();
     handoff(root, 'plan.md', { stale: true });
     markPause(root);
 
     assert.strictEqual(staleHandoffs(root), 'plan.md');
+    assert.deepStrictEqual(remaining(root), []);
+    assert.deepStrictEqual(archived(root), ['plan.md']);
 });
 
-test('a handoff written after the last pause is current, not stale', () => {
+test('a handoff newer than the last pause is left in place', () => {
     const root = makeRepo();
     markPause(root);
     handoff(root, 'plan.md', { stale: false });
 
     assert.strictEqual(staleHandoffs(root), '');
+    assert.deepStrictEqual(remaining(root), ['plan.md']);
+    assert.deepStrictEqual(archived(root), []);
 });
 
-test('the shutdown_request marker is never reported as a stale handoff', () => {
+test('shutdown_request is a control marker and is never swept', () => {
     const root = makeRepo();
     handoff(root, 'shutdown_request', { stale: true });
     markPause(root);
 
     assert.strictEqual(staleHandoffs(root), '');
+    assert.deepStrictEqual(remaining(root), ['shutdown_request']);
 });
 
-test('with no pause marker, handoffs are reported unjudgeable rather than assumed fresh', () => {
-    // A repo that ran agents but never completed a pause has no marker, so there
-    // is no boundary to date handoffs against. Staying silent here would mean
-    // "cannot tell" renders as "all current" — the exact fail-open this helper
-    // exists to prevent. Seen live: a repo with 2-day-old review handoffs and no
-    // marker at all.
+test('with no pause marker every handoff is swept — undatable means untrusted', () => {
+    // A repo that never completed a pause has no boundary to date handoffs
+    // against. Guessing from timestamp gaps works when they are days apart and
+    // silently fails when they are hours apart, so do not guess: sweep them all
+    // and let the phase regenerate. Nothing is lost, so being wrong is cheap.
     const root = makeRepo();
     handoff(root, 'plan.md', { stale: true });
-    handoff(root, 'review.md', { stale: true });
+    handoff(root, 'review.md', { stale: false });
 
     const out = staleHandoffs(root).split('\n');
-    assert.strictEqual(out[0], 'no-pause-marker', 'must announce that nothing can be dated');
+    assert.strictEqual(out[0], 'no-pause-marker', 'must say why everything was swept');
     assert.deepStrictEqual(out.slice(1).sort(), ['plan.md', 'review.md']);
+    assert.deepStrictEqual(remaining(root), []);
+    assert.deepStrictEqual(archived(root), ['plan.md', 'review.md']);
 });
 
-test('no marker and only a shutdown_request means no handoffs to warn about', () => {
-    // The sentinel exists to stop the caller trusting handoffs it cannot date.
-    // With zero judgeable handoffs there is nothing to distrust, so warning
-    // would just be noise.
+test('a swept handoff is recoverable, never deleted', () => {
+    const root = makeRepo();
+    const p = handoff(root, 'plan.md', { stale: true });
+    const body = fs.readFileSync(p, 'utf8');
+    markPause(root);
+
+    staleHandoffs(root);
+
+    const moved = path.join(root, '.flow', 'session', 'spent', 'plan.md');
+    assert.strictEqual(fs.readFileSync(moved, 'utf8'), body, 'content must survive the sweep');
+});
+
+test('no marker and only a shutdown_request sweeps nothing and says nothing', () => {
     const root = makeRepo();
     handoff(root, 'shutdown_request', { stale: true });
 
     assert.strictEqual(staleHandoffs(root), '');
+    assert.deepStrictEqual(archived(root), []);
 });
 
-test('an empty session dir with no marker reports nothing at all', () => {
+test('an empty session dir reports nothing and creates no archive', () => {
     const root = makeRepo();
     fs.mkdirSync(path.join(root, '.flow', 'session'), { recursive: true });
 
     assert.strictEqual(staleHandoffs(root), '');
+    assert.strictEqual(fs.existsSync(path.join(root, '.flow', 'session', 'spent')), false);
 });
 
 test('bold Paused at survives the markdown the pause step actually writes', () => {

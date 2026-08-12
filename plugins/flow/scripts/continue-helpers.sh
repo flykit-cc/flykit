@@ -4,7 +4,7 @@
 #
 # Usage:
 #   continue-helpers.sh check-progress      # exists | exists:stale-blocks=<n> | missing
-#   continue-helpers.sh stale-handoffs      # handoff files in .flow/session/ older than the last pause
+#   continue-helpers.sh sweep-handoffs      # archive spent handoffs to .flow/session/spent/, print names
 #   continue-helpers.sh progress-age-days   # integer days since .flow/session-progress.md mtime
 #   continue-helpers.sh last-log-titles     # last 3 dated titles from .flow/session-log.md
 #   continue-helpers.sh dev-server-state    # running:<pid> | port-taken:<cwd> | free | no-port
@@ -44,14 +44,19 @@ case "$cmd" in
     fi
     ;;
 
-  stale-handoffs)
+  sweep-handoffs)
     SESSION_DIR="$REPO_ROOT/.flow/session"
+    SPENT_DIR="$SESSION_DIR/spent"
     MARKER="$REPO_ROOT/.flow/state/last-pause"
     [ -d "$SESSION_DIR" ] || exit 0
     # Without a pause marker (a repo that ran agents but never completed a pause)
-    # there is no boundary to date handoffs against. Staying silent would render
-    # "cannot tell" as "all current" — the fail-open this helper exists to stop.
-    # Say so instead, and let the caller ask rather than guess.
+    # there is no boundary to date handoffs against. Do NOT guess from timestamp
+    # gaps — that happens to work when sessions are days apart and silently fails
+    # when they are hours apart. Sweep everything instead: a regenerated phase
+    # costs one agent run, a stale plan silently implemented costs far more.
+    #
+    # Sweeping moves rather than deletes, which is what makes failing closed
+    # cheap enough to be the default — a wrong call is undone with one `mv`.
     HAVE_MARKER=1; [ -f "$MARKER" ] || HAVE_MARKER=0
     NAMES=""
     for f in "$SESSION_DIR"/*; do
@@ -60,12 +65,13 @@ case "$cmd" in
       # shutdown_request is a control marker, not a phase handoff.
       if [ "$BASE" = "shutdown_request" ]; then continue; fi
       if [ "$HAVE_MARKER" -eq 0 ] || [ "$f" -ot "$MARKER" ]; then
+        mkdir -p "$SPENT_DIR"
+        mv -f "$f" "$SPENT_DIR/$BASE"
         NAMES="${NAMES}${BASE}
 "
       fi
     done
-    # The sentinel only makes sense when there is actually something undatable;
-    # with zero judgeable handoffs there is nothing for the caller to distrust.
+    # Only explain when something was actually swept for want of a marker.
     if [ "$HAVE_MARKER" -eq 0 ] && [ -n "$NAMES" ]; then
       echo "no-pause-marker"
     fi
