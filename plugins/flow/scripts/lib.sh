@@ -38,7 +38,7 @@ flow_extract() {
     [ -f "$config" ] || { printf ''; return 0; }
     # The pipeline starts with `grep`, which exits 1 on no match. Under a
     # caller's `set -o pipefail` (e.g. continue-helpers.sh's
-    # `PORT="$(flow_dev_port)"`) that would make a merely-unset key abort the
+    # `PORT="$(flow_extract dev_port)"`) that would make a merely-unset key abort the
     # whole script. `grep` finding nothing is not an error here — it's the
     # normal "key absent" case, which callers handle by checking for an empty
     # string — so this function always returns 0 itself.
@@ -96,12 +96,6 @@ flow_path_is_secret() {
         case "$base" in $glob) return 0;; esac
     done
     return 1
-}
-
-# The dev server's port, if the project pins one (config key: dev_port).
-# Empty when unset — callers should skip port checks rather than guess.
-flow_dev_port() {
-    flow_extract dev_port
 }
 
 # Durable cross-session memory directory (config key: memory_path). Expands a
@@ -169,16 +163,4 @@ flow_stop_check_mode() {
         ask|always|never) printf '%s' "$v" ;;
         *)                printf 'ask' ;;
     esac
-}
-
-# Model name for a tier: default | critical | cheap.
-# Never hardcode a model in an agent file — read the tier here instead.
-flow_model_tier() {
-    local tier="${1:-default}" v
-    case "$tier" in
-        critical) v="$(flow_extract model_critical)"; [ -z "$v" ] && v='opus' ;;
-        cheap)    v="$(flow_extract model_cheap)";    [ -z "$v" ] && v='haiku' ;;
-        *)        v="$(flow_extract model_default)";  [ -z "$v" ] && v='sonnet' ;;
-    esac
-    printf '%s' "$v"
 }

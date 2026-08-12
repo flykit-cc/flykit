@@ -11,8 +11,6 @@
 - Language: {LANGUAGE}
 - Framework: {FRAMEWORK}
 - Runtime: {RUNTIME}
-- Database: {DATABASE_OR_NONE}
-- Deploy target: {DEPLOY_TARGET}
 
 ## Structure
 

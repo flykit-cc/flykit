@@ -28,35 +28,17 @@ function runInit(target, extraArgs = []) {
     }
 }
 
-test('parseArgs: default target is cwd', () => {
-    const args = parseArgs([]);
-    assert.equal(args.target, process.cwd());
+test('parseArgs: target defaults to cwd and both flag spellings resolve to absolute', () => {
+    assert.equal(parseArgs([]).target, process.cwd());
+    assert.equal(parseArgs(['--target', '/tmp/foo']).target, path.resolve('/tmp/foo'));
+    assert.equal(parseArgs(['-t', '/tmp/bar']).target, path.resolve('/tmp/bar'));
 });
 
-test('parseArgs: --target honored', () => {
-    const args = parseArgs(['--target', '/tmp/foo']);
-    assert.equal(args.target, path.resolve('/tmp/foo'));
-});
-
-test('parseArgs: -t short flag honored', () => {
-    const args = parseArgs(['-t', '/tmp/bar']);
-    assert.equal(args.target, path.resolve('/tmp/bar'));
-});
-
-test('ensureDir: creates missing dir', () => {
-    const sandbox = mkSandbox();
-    const dir = path.join(sandbox, 'issues');
-    const res = ensureDir(dir);
-    assert.equal(res.created, true);
+test('ensureDir: creates the dir once, then reports it already existed', () => {
+    const dir = path.join(mkSandbox(), 'issues');
+    assert.equal(ensureDir(dir).created, true);
     assert.equal(fs.existsSync(dir), true);
-});
-
-test('ensureDir: idempotent — second call does not "create"', () => {
-    const sandbox = mkSandbox();
-    const dir = path.join(sandbox, 'issues');
-    ensureDir(dir);
-    const res2 = ensureDir(dir);
-    assert.equal(res2.created, false);
+    assert.equal(ensureDir(dir).created, false, 're-running init must not re-report a create');
 });
 
 test('copyIfMissing: copies template when dest is absent', () => {
@@ -236,7 +218,7 @@ test('appendSection: creates the file (and parent dir) when absent', () => {
     const sandbox = mkSandbox();
     const dest = path.join(sandbox, 'nested', 'CLAUDE.md');
     const result = appendSection(dest, 'flow', 'Some flow conventions.');
-    assert.equal(result, 'created');
+    assert.equal(result.status, 'created');
     const text = fs.readFileSync(dest, 'utf8');
     assert.equal(text, '<!-- flow:begin -->\nSome flow conventions.\n<!-- flow:end -->\n');
 });
@@ -246,7 +228,7 @@ test('appendSection: appends to an existing file that lacks the marker', () => {
     const dest = path.join(sandbox, 'CLAUDE.md');
     fs.writeFileSync(dest, '# Notes\n\nKeep this.\n');
     const result = appendSection(dest, 'flow', 'Flow body.');
-    assert.equal(result, 'appended');
+    assert.equal(result.status, 'appended');
     const text = fs.readFileSync(dest, 'utf8');
     assert.match(text, /^# Notes\n\nKeep this\.\n/, 'original content stays untouched at the top');
     assert.match(text, /<!-- flow:begin -->\nFlow body\.\n<!-- flow:end -->\n$/, 'block appended at the end');
@@ -267,7 +249,7 @@ test('appendSection: is a no-op ("present") when the marker already exists, leav
     const dest = path.join(sandbox, 'CLAUDE.md');
     fs.writeFileSync(dest, '# Notes\n\n<!-- flow:begin -->\nOld body.\n<!-- flow:end -->\n');
     const result = appendSection(dest, 'flow', 'New body that should NOT appear.');
-    assert.equal(result, 'present');
+    assert.equal(result.status, 'present');
     const text = fs.readFileSync(dest, 'utf8');
     assert.equal(text, '# Notes\n\n<!-- flow:begin -->\nOld body.\n<!-- flow:end -->\n', 'file left byte-for-byte untouched');
     assert.doesNotMatch(text, /New body/, 'must not overwrite with new body when marker is already present');
@@ -275,27 +257,18 @@ test('appendSection: is a no-op ("present") when the marker already exists, leav
 
 // --- Stack-command detection (Task: init auto-detects stack commands) ---
 
-test('pmPrefix: pnpm-lock.yaml selects pnpm', () => {
-    const sandbox = mkSandbox();
-    fs.writeFileSync(path.join(sandbox, 'pnpm-lock.yaml'), '');
-    assert.equal(pmPrefix(sandbox), 'pnpm');
-});
-
-test('pmPrefix: yarn.lock selects yarn', () => {
-    const sandbox = mkSandbox();
-    fs.writeFileSync(path.join(sandbox, 'yarn.lock'), '');
-    assert.equal(pmPrefix(sandbox), 'yarn');
-});
-
-test('pmPrefix: bun.lockb selects bun', () => {
-    const sandbox = mkSandbox();
-    fs.writeFileSync(path.join(sandbox, 'bun.lockb'), '');
-    assert.equal(pmPrefix(sandbox), 'bun');
-});
-
-test('pmPrefix: defaults to "npm run" when no lockfile is present', () => {
-    const sandbox = mkSandbox();
-    assert.equal(pmPrefix(sandbox), 'npm run');
+test('pmPrefix: each lockfile selects its package manager', () => {
+    const cases = [
+        ['pnpm-lock.yaml', 'pnpm'],
+        ['yarn.lock', 'yarn'],
+        ['bun.lockb', 'bun'],
+        [null, 'npm run'],
+    ];
+    for (const [lockfile, expected] of cases) {
+        const sandbox = mkSandbox();
+        if (lockfile) fs.writeFileSync(path.join(sandbox, lockfile), '');
+        assert.equal(pmPrefix(sandbox), expected, `${lockfile || 'no lockfile'} should select ${expected}`);
+    }
 });
 
 test('detectStackCommands: pnpm project maps lint/test/build/dev scripts by exact key', () => {
@@ -629,8 +602,6 @@ test('renderClaudeMdTemplate: fills evidenced fields and marks the rest _(not se
         '- Language: {LANGUAGE}',
         '- Framework: {FRAMEWORK}',
         '- Runtime: {RUNTIME}',
-        '- Database: {DATABASE_OR_NONE}',
-        '- Deploy target: {DEPLOY_TARGET}',
         '{PROJECT_ROOT}/',
     ].join('\n');
 
@@ -640,16 +611,12 @@ test('renderClaudeMdTemplate: fills evidenced fields and marks the rest _(not se
         language: 'TypeScript',
         runtime: 'Node.js',
         framework: '',
-        database: '',
-        deployTarget: '',
     });
 
     assert.match(out, /^# my-app$/m);
     assert.match(out, /^- Language: TypeScript$/m);
     assert.match(out, /^- Framework: _\(not set\)_$/m);
     assert.match(out, /^- Runtime: Node\.js$/m);
-    assert.match(out, /^- Database: _\(not set\)_$/m);
-    assert.match(out, /^- Deploy target: _\(not set\)_$/m);
     assert.match(out, /^\/path\/to\/my-app\/$/m);
     assert.doesNotMatch(out, /\{[A-Z_]+\}/, 'no raw placeholder must survive');
 });
@@ -688,8 +655,7 @@ test('main: end-to-end — CLAUDE.md has zero {UPPERCASE} placeholders for a bar
     assert.doesNotMatch(claudeText, /\{[A-Z_]+\}/, 'no raw {PLACEHOLDER} must remain');
     assert.match(claudeText, new RegExp(`# ${path.basename(target)}`));
     assert.match(claudeText, /Language: _\(not set\)_/);
-    assert.match(claudeText, /Database: _\(not set\)_/);
-    assert.match(claudeText, /Deploy target: _\(not set\)_/);
+    assert.match(claudeText, /Framework: _\(not set\)_/);
 });
 
 test('main: --project-name overrides both package.json name and directory basename', () => {

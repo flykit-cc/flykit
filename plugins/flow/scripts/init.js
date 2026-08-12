@@ -102,7 +102,7 @@ function copyIfMissing(src, dest) {
  * `init` can be re-run safely. Never rewrites content outside the markers —
  * the user's own notes are theirs.
  *
- * @returns {'created'|'appended'|'present'}
+ * @returns {{created: boolean, path: string, status: 'created'|'appended'|'present'}}
  */
 function appendSection(dest, marker, body) {
     const begin = `<!-- ${marker}:begin -->`;
@@ -112,15 +112,15 @@ function appendSection(dest, marker, body) {
     if (!fs.existsSync(dest)) {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, block);
-        return 'created';
+        return { created: true, path: dest, status: 'created' };
     }
 
     const current = fs.readFileSync(dest, 'utf8');
-    if (current.includes(begin)) return 'present';
+    if (current.includes(begin)) return { created: false, path: dest, status: 'present' };
 
     const sep = current.endsWith('\n') ? '\n' : '\n\n';
     fs.appendFileSync(dest, `${sep}${block}`);
-    return 'appended';
+    return { created: true, path: dest, status: 'appended' };
 }
 
 /**
@@ -353,8 +353,7 @@ function detectFramework(target) {
 
 /**
  * Substitute the CLAUDE.md template's `{KEY}` placeholders with detected
- * values. Anything not detected — or not detectable at all, like
- * DATABASE_OR_NONE/DEPLOY_TARGET — renders as `_(not set)_`, an honest,
+ * values. Anything not detected renders as `_(not set)_`, an honest,
  * clearly-intentional marker instead of a raw `{PLACEHOLDER}`.
  */
 function renderClaudeMdTemplate(text, opts) {
@@ -364,8 +363,6 @@ function renderClaudeMdTemplate(text, opts) {
         LANGUAGE: opts.language,
         RUNTIME: opts.runtime,
         FRAMEWORK: opts.framework,
-        DATABASE_OR_NONE: opts.database,
-        DEPLOY_TARGET: opts.deployTarget,
     };
     let out = text;
     for (const [key, value] of Object.entries(substitutions)) {
@@ -375,18 +372,11 @@ function renderClaudeMdTemplate(text, opts) {
 }
 
 function report(label, result) {
-    // appendSection returns a plain 'created'|'appended'|'present' string;
-    // copyIfMissing/ensureDir return a { created, path, missingSource? } object.
-    if (typeof result === 'string') {
-        const symbol = result === 'present' ? '·' : '+';
-        process.stdout.write(`  ${symbol} ${label}: ${result}\n`);
-        return;
-    }
     if (result.missingSource) {
         process.stdout.write(`  ! ${label}: source template missing (${result.path})\n`);
         return;
     }
-    const status = result.created ? 'created' : 'already exists, skipping';
+    const status = result.status || (result.created ? 'created' : 'already exists, skipping');
     process.stdout.write(`  ${result.created ? '+' : '·'} ${label}: ${status}\n`);
 }
 
@@ -464,8 +454,6 @@ function main() {
             language,
             runtime,
             framework: detectFramework(target),
-            database: '',
-            deployTarget: '',
         });
         report('CLAUDE.md', appendSection(claudeDest, 'flow', body));
     } else {

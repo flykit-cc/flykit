@@ -113,16 +113,6 @@ test('flow_stop_check_mode defaults to ask and rejects junk', () => {
     assert.equal(sh(makeProject('- stop_check: always\n'), 'flow_stop_check_mode'), 'always');
 });
 
-test('flow_model_tier falls back per tier and honours config', () => {
-    const empty = makeProject('# empty\n');
-    assert.equal(sh(empty, 'flow_model_tier default'), 'sonnet');
-    assert.equal(sh(empty, 'flow_model_tier critical'), 'opus');
-    assert.equal(sh(empty, 'flow_model_tier cheap'), 'haiku');
-
-    const set = makeProject('- model_default: sonnet\n- model_critical: opus\n- model_cheap: haiku\n');
-    assert.equal(sh(set, 'flow_model_tier critical'), 'opus');
-});
-
 // 9. flow_extract must not return non-zero for a missing key — under
 // `set -euo pipefail` (as continue-helpers.sh uses), a non-zero return from
 // a bare `VAR="$(flow_extract key)"` aborts the whole script.

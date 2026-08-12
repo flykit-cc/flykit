@@ -161,7 +161,6 @@ cmd="${1:-}"
 case "$cmd" in
   git-state) git_state ;;
   progress)  progress_state ;;
-  pr-state)  pr_state ;;
 
   all)
     echo "[git]";      git_state

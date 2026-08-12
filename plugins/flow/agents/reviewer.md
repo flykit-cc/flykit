@@ -5,10 +5,10 @@ tools: Bash, Read, Glob, Grep
 color: red
 ---
 
-> **Model tier.** This agent does not pin a model. The orchestrator picks one via
-> `flow_model_tier` from `scripts/lib.sh`: use `critical` when the diff touches
-> security, auth, money paths, migrations, or fail-closed logic; `default` otherwise.
-> Never dispatch this agent on the `cheap` tier.
+> **Model tier.** This agent does not pin a model. The orchestrator picks one from
+> `.flow/config.md`: `model_critical` when the diff touches security, auth, money
+> paths, migrations, or fail-closed logic; `model_default` otherwise. Never dispatch
+> this agent on `model_cheap`.
 
 # reviewer
 
