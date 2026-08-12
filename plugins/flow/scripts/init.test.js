@@ -258,9 +258,12 @@ test('appendSection: is a no-op ("present") when the marker already exists, leav
 // --- Stack-command detection (Task: init auto-detects stack commands) ---
 
 test('pmPrefix: each lockfile selects its package manager', () => {
+    // bun.lock is Bun 1.2+'s default (text); bun.lockb is the legacy binary one.
+    // Both are still in the wild, so both must map to bun.
     const cases = [
         ['pnpm-lock.yaml', 'pnpm'],
         ['yarn.lock', 'yarn'],
+        ['bun.lock', 'bun'],
         ['bun.lockb', 'bun'],
         [null, 'npm run'],
     ];

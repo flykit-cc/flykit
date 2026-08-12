@@ -144,10 +144,15 @@ const STACK_CMD_KEYS = ['dev_cmd', 'lint_cmd', 'typecheck_cmd', 'build_cmd', 'te
  * Package-manager prefix for `npm run <script>`-style commands, chosen from
  * whichever lockfile is present. `npm run` is the fallback (no lockfile, or
  * a plain package-lock.json project).
+ *
+ * Both Bun lockfiles are checked: 1.2 made the text `bun.lock` the default,
+ * but `bun.lockb` projects are still common and Bun still reads them.
  */
 function pmPrefix(target) {
     if (fs.existsSync(path.join(target, 'pnpm-lock.yaml'))) return 'pnpm';
     if (fs.existsSync(path.join(target, 'yarn.lock'))) return 'yarn';
+    // Bun 1.2+ writes a text `bun.lock`; `bun.lockb` is the legacy binary form.
+    if (fs.existsSync(path.join(target, 'bun.lock'))) return 'bun';
     if (fs.existsSync(path.join(target, 'bun.lockb'))) return 'bun';
     return 'npm run';
 }
