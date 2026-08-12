@@ -52,6 +52,8 @@ Check `$CLAUDE_PROJECT_DIR/.flow/session/` for `investigation.md`, `plan.md`, `r
 
 Anything it names predates the last pause and is spent. Delete those files (`rm`) and say which ones in the recap; regenerate the phase if the work still needs them. Only files it does *not* name count as this session's.
 
+If the first line is **`no-pause-marker`**, this project has never completed a pause, so there is no boundary to date the handoffs that follow. Do **not** treat them as current and do **not** delete them blind — say how many there are and how old (`ls -la`), and ask whether they belong to the session being resumed. "Cannot tell" must never render as "all fresh".
+
 ## Step 4: Dependencies
 
 If `deps-ok` returned `missing`, run the project's install command (infer from `dev_cmd`'s package manager, e.g. the `install` subcommand). If unsure, ask once.

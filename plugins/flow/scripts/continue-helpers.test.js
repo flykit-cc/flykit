@@ -131,9 +131,34 @@ test('the shutdown_request marker is never reported as a stale handoff', () => {
     assert.strictEqual(staleHandoffs(root), '');
 });
 
-test('with no pause marker yet, nothing is judged stale', () => {
+test('with no pause marker, handoffs are reported unjudgeable rather than assumed fresh', () => {
+    // A repo that ran agents but never completed a pause has no marker, so there
+    // is no boundary to date handoffs against. Staying silent here would mean
+    // "cannot tell" renders as "all current" — the exact fail-open this helper
+    // exists to prevent. Seen live: a repo with 2-day-old review handoffs and no
+    // marker at all.
     const root = makeRepo();
     handoff(root, 'plan.md', { stale: true });
+    handoff(root, 'review.md', { stale: true });
+
+    const out = staleHandoffs(root).split('\n');
+    assert.strictEqual(out[0], 'no-pause-marker', 'must announce that nothing can be dated');
+    assert.deepStrictEqual(out.slice(1).sort(), ['plan.md', 'review.md']);
+});
+
+test('no marker and only a shutdown_request means no handoffs to warn about', () => {
+    // The sentinel exists to stop the caller trusting handoffs it cannot date.
+    // With zero judgeable handoffs there is nothing to distrust, so warning
+    // would just be noise.
+    const root = makeRepo();
+    handoff(root, 'shutdown_request', { stale: true });
+
+    assert.strictEqual(staleHandoffs(root), '');
+});
+
+test('an empty session dir with no marker reports nothing at all', () => {
+    const root = makeRepo();
+    fs.mkdirSync(path.join(root, '.flow', 'session'), { recursive: true });
 
     assert.strictEqual(staleHandoffs(root), '');
 });

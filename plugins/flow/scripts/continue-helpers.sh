@@ -43,16 +43,29 @@ case "$cmd" in
   stale-handoffs)
     SESSION_DIR="$REPO_ROOT/.flow/session"
     MARKER="$REPO_ROOT/.flow/state/last-pause"
-    # Without a pause marker there is no session boundary to judge against, so
-    # nothing can be called stale.
-    if [ ! -d "$SESSION_DIR" ] || [ ! -f "$MARKER" ]; then exit 0; fi
+    [ -d "$SESSION_DIR" ] || exit 0
+    # Without a pause marker (a repo that ran agents but never completed a pause)
+    # there is no boundary to date handoffs against. Staying silent would render
+    # "cannot tell" as "all current" — the fail-open this helper exists to stop.
+    # Say so instead, and let the caller ask rather than guess.
+    HAVE_MARKER=1; [ -f "$MARKER" ] || HAVE_MARKER=0
+    NAMES=""
     for f in "$SESSION_DIR"/*; do
       [ -f "$f" ] || continue
       BASE=$(basename "$f")
       # shutdown_request is a control marker, not a phase handoff.
       if [ "$BASE" = "shutdown_request" ]; then continue; fi
-      if [ "$f" -ot "$MARKER" ]; then echo "$BASE"; fi
+      if [ "$HAVE_MARKER" -eq 0 ] || [ "$f" -ot "$MARKER" ]; then
+        NAMES="${NAMES}${BASE}
+"
+      fi
     done
+    # The sentinel only makes sense when there is actually something undatable;
+    # with zero judgeable handoffs there is nothing for the caller to distrust.
+    if [ "$HAVE_MARKER" -eq 0 ] && [ -n "$NAMES" ]; then
+      echo "no-pause-marker"
+    fi
+    printf '%s' "$NAMES"
     ;;
 
   progress-age-days)
