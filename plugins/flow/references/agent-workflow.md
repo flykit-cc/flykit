@@ -49,6 +49,7 @@ Commands push their *mechanics* into shell helpers under `${CLAUDE_PLUGIN_ROOT}/
 
 - `pause-helpers.sh` — `changed-files`, `diff-since-pause`, `write-marker`/`read-marker`, `log-block`, `trim-or-delete-progress`, `drift-check`, `save-memory`, `finish`. Used by `/flow:pause` (all modes, including `land`).
 - `continue-helpers.sh` — `check-progress`, `sweep-handoffs`, `progress-age-days`, `last-log-titles`, `dev-server-state`, `deps-ok`. Used by `/flow:continue`.
+- `issue-helpers.sh` — `version-check`, `dupe-search`. Used by `/flow:issue`. Deliberately depends on nothing under `.flow/`: the command must work when flow itself is misbehaving.
 - `lib.sh` — sourced by the helpers *and* the hooks; the single place that parses `.flow/config.md` (`flow_extract`, `flow_secret_globs`, `flow_private_globs`, `flow_memory_path`, …). Everything stack-specific is read here, never hardcoded.
 
 These helpers also touch a few session-state files, all under `.flow/`: `session-log.md` (append-only dated blocks) and `state/last-pause` (the pause marker).

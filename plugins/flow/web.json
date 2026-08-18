@@ -2,11 +2,15 @@
   "displayName": "Flow",
   "author": "kaiomp",
   "authorUrl": "https://github.com/kaiomp",
-  "categories": ["Productivity", "Workflow", "DevOps"],
+  "categories": [
+    "Productivity",
+    "Workflow",
+    "DevOps"
+  ],
   "tagline": "An opinionated AI dev workflow for Claude Code — session lifecycle, orchestrated agents, and deep reviews that work in any repo.",
   "description": "Flow packages a battle-tested workflow for shipping software with Claude Code. It wires up twelve slash commands, a focused reviewer agent on top of Claude Code's built-in agents, and a handful of hooks so every session starts, runs, and ships consistently — while staying stack-agnostic by reading project specifics from a per-repo config.md.",
   "features": [
-    "Twelve slash commands covering the full session lifecycle: init and uninstall, continue (cold-starts or resumes), status (a read-only where-am-I), pause (including a land mode that ships), plus autonomous autopilot",
+    "Thirteen slash commands covering the full session lifecycle: init and uninstall, continue (cold-starts or resumes), status (a read-only where-am-I), pause (including a land mode that ships), plus autonomous autopilot",
     "One focused reviewer agent, layered on Claude Code's built-in Explore and general-purpose agents plus the writing-plans skill, coordinated by a main orchestrator",
     "Autopilot: an autonomous multi-sprint loop that spawns a non-overlapping agent team, deep-reviews, ships, and self-generates work via audit",
     "Project-agnostic: dev/lint/test/build commands come from your repo's .flow/config.md",
@@ -69,6 +73,10 @@
     {
       "name": "autopilot",
       "description": "Autonomous multi-sprint loop: pick issues, spawn a non-overlapping agent team, deep-review, push, and self-generate work via audit when issues run out."
+    },
+    {
+      "name": "issue",
+      "description": "Report a flow bug or feature request as a GitHub issue, from any project. Checks your installed version first so you are not reporting an already-fixed bug."
     }
   ],
   "sources": [

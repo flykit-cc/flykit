@@ -26,7 +26,7 @@
       "name": "flow",
       "description": "Stack-agnostic AI dev workflow \u2014 twelve slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
       "source": "./plugins/flow",
-      "version": "0.5.9",
+      "version": "0.6.0",
       "category": "workflow",
       "keywords": [
         "workflow",

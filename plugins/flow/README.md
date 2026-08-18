@@ -26,6 +26,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | `/flow:continue`     | Resume an in-progress session from `.flow/session-progress.md`, or start a new one if none exists. |
 | `/flow:questions`    | Work the open-question queue in `.flow/questions.md` — answer a round, list it, reopen or retire an entry. |
 | `/flow:status`       | Read-only "where am I / what's running / what next" — git state, in-flight agents, PR/CI. Changes nothing. |
+| `/flow:issue`        | Report a flow bug or feature request from any project; checks your version first, never posts without showing you the body. |
 | `/flow:pause`        | Snapshot current state to `.flow/session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
 | `/flow:audit`        | Dry-run review: lint, typecheck, security pass without shipping.        |
 | `/flow:cleanup`      | Tidy stray branches, stale session files, and `.flow/session/`.     |
