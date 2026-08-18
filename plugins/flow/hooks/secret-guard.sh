@@ -15,6 +15,31 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../scripts/lib.sh
 . "$SOURCE_DIR/../scripts/lib.sh"
 
+PLUGIN_ROOT="$(cd "$SOURCE_DIR/.." && pwd)"
+
+# The plugin's own source ships publicly on GitHub and holds no credentials,
+# but several of its filenames contain "secret", so the *secret* glob blocks
+# reading them. Blocking a security tool's own source is pure friction, and
+# friction on a guard teaches people to route around it — a worse outcome than
+# the non-risk it prevents. Reads only; file-protection.sh still covers writes.
+flow_is_plugin_path() {
+    local p="$1"
+    # ABSOLUTE paths only. Resolving a relative path against $PWD would exempt
+    # `cat .env` whenever the cwd sits inside the plugin tree — which it does
+    # whenever the plugin's own repo is the project being worked on.
+    case "$p" in
+        "$PLUGIN_ROOT"/*) ;;
+        *) return 1 ;;
+    esac
+    # ...and only the plugin's own source and docs. A credential that happens to
+    # live inside the plugin tree (.env, a .pem) must still be blocked, so this
+    # is an allowlist of source extensions, never a blanket pass for the dir.
+    case "$p" in
+        *.sh|*.md|*.js) return 0 ;;
+    esac
+    return 1
+}
+
 INPUT=$(cat 2>/dev/null || true)
 TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 
@@ -22,7 +47,7 @@ case "$TOOL" in
     Read)
         FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
         [ -n "$FILE_PATH" ] || exit 0
-        if flow_path_is_secret "$FILE_PATH"; then
+        if flow_path_is_secret "$FILE_PATH" && ! flow_is_plugin_path "$FILE_PATH"; then
             printf '[flow secret-guard] Read blocked: "%s" looks like a secret file.\n' "$FILE_PATH" >&2
             exit 2
         fi
@@ -67,7 +92,7 @@ case "$TOOL" in
                 # trip the *secret* glob.
                 case "$TOK" in
                     */*|*.*)
-                        if flow_path_is_secret "$TOK"; then
+                        if flow_path_is_secret "$TOK" && ! flow_is_plugin_path "$TOK"; then
                             BLOCKED="$TOK"
                         fi
                         ;;

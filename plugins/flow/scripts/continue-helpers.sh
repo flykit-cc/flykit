@@ -36,8 +36,14 @@ case "$cmd" in
     # one Goal, one Paused at, and a NEXT section per session. A resume reads the
     # first and works from a plan several sessions old.
     NEXTS=$(grep -ciE '^#+ *next' "$PROGRESS" 2>/dev/null || true)
-    STALE=$(( ${GOALS:-0} + ${PAUSED:-0} + ${NEXTS:-0} ))
-    if [ "${GOALS:-0}" -gt 1 ] || [ "${PAUSED:-0}" -gt 1 ] || [ "${NEXTS:-0}" -gt 1 ]; then
+    # Count EXCESS blocks, not total headers. A healthy file has one of each, so
+    # only the surplus is stale — reporting the sum sends a reader looking for
+    # five things to delete when two are actually stale.
+    STALE=0
+    for N in "${GOALS:-0}" "${PAUSED:-0}" "${NEXTS:-0}"; do
+      [ "$N" -gt 1 ] && STALE=$(( STALE + N - 1 ))
+    done
+    if [ "$STALE" -gt 0 ]; then
       echo "exists:stale-blocks=$STALE"
     else
       echo "exists"

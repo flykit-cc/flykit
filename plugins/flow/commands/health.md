@@ -32,6 +32,14 @@ Run each check and collect the result. Print a table at the end.
 
 For each non-empty `*_cmd` in config.md, take the first token and check it is on `PATH` (`command -v <token>`). Report missing.
 
+Also check `jq` specifically — it is not a `*_cmd`, so the loop above misses it:
+
+```bash
+command -v jq >/dev/null 2>&1 && echo "jq: ok" || echo "jq: MISSING"
+```
+
+If it is missing, report it as a **failure, not a warning**, and say plainly what it costs: all three hooks (`secret-guard`, `file-protection`, `auto-lint`) exit early without it, so secret-read blocking, write protection, and auto-lint are **silently disabled**. Nothing else in flow surfaces this — a user would otherwise believe they are protected when they are not. Fix: `brew install jq` / `apt install jq`.
+
 ### 5. PM backend connectivity
 
 - **github**: `gh auth status` — pass if logged in

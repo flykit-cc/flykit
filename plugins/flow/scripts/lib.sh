@@ -50,6 +50,13 @@ flow_extract() {
     return 0
 }
 
+# NOTE on reading these glob lists: never iterate `$(flow_*_globs)` unquoted.
+# Bash applies PATHNAME EXPANSION to an unquoted command substitution, so a
+# pattern like `*secret*` is replaced by whatever matches it in the CURRENT
+# DIRECTORY — the pattern itself is then gone and the guard silently stops
+# matching anything else. `read -ra` word-splits without globbing, so the
+# patterns stay literal regardless of cwd.
+
 # Space/newline-separated list of glob patterns that name secret files.
 # Config key: secret_globs (space-separated). Falls back to a conservative
 # default that catches env files, private keys, and common credential blobs.
@@ -74,7 +81,9 @@ flow_secret_globs() {
 # metachars to regex. Best-effort; defense-in-depth only.
 flow_secret_regex() {
     local glob out=""
-    for glob in $(flow_secret_globs); do
+    local -a _globs
+    read -ra _globs <<< "$(flow_secret_globs)"
+    for glob in "${_globs[@]}"; do
         # Escape regex specials, then translate glob * (confined to one path
         # component, i.e. it does not cross a `/`).
         local re
@@ -89,7 +98,9 @@ flow_secret_regex() {
 flow_path_is_secret() {
     local path="$1" glob base
     base="$(basename "$path")"
-    for glob in $(flow_secret_globs); do
+    local -a _globs
+    read -ra _globs <<< "$(flow_secret_globs)"
+    for glob in "${_globs[@]}"; do
         # shellcheck disable=SC2254
         case "$path" in $glob|*/$glob) return 0;; esac
         # shellcheck disable=SC2254
@@ -134,7 +145,9 @@ flow_path_is_private() {
     local path="$1" glob rel root
     root="$(flow_project_root)"
     rel="${path#"$root"/}"
-    for glob in $(flow_private_globs); do
+    local -a _globs
+    read -ra _globs <<< "$(flow_private_globs)"
+    for glob in "${_globs[@]}"; do
         # shellcheck disable=SC2254
         case "$rel" in $glob|$glob/*) return 0;; esac
     done
@@ -144,7 +157,9 @@ flow_path_is_private() {
 # ERE alternation matching any private glob, for grepping a list of paths.
 flow_private_regex() {
     local glob out="" re
-    for glob in $(flow_private_globs); do
+    local -a _globs
+    read -ra _globs <<< "$(flow_private_globs)"
+    for glob in "${_globs[@]}"; do
         re="$(printf '%s' "$glob" | sed -E 's/[].[^$()+{}|\\]/\\&/g; s/\*/[^[:space:]]*/g')"
         re="(^|/)${re}(/|$)"
         if [ -z "$out" ]; then out="$re"; else out="$out|$re"; fi

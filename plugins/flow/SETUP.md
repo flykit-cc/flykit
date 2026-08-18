@@ -147,7 +147,7 @@ It reports:
 ### Hooks aren't firing
 - Confirm the plugin is enabled: `/plugin list` should show `flow` as active.
 - Hooks live at `${CLAUDE_PLUGIN_ROOT}/hooks/`. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` is valid JSON.
-- `auto-lint` and `file-protection` need `jq` on PATH. Install it (`brew install jq`, `apt install jq`, etc.). Without it, the hook fails open — it will not block anything.
+- **All three hooks need `jq` on PATH** — `secret-guard` (blocks reading secret files), `file-protection` (blocks writing them), and `auto-lint`. Without `jq` every one of them exits 0 immediately and does nothing, silently: you are not protected and nothing says so. Install it (`brew install jq`, `apt install jq`, etc.) and confirm with `/flow:health`, which reports a missing `jq` as a failure.
 - Check Claude Code's hook logs for any non-zero exits.
 
 ### `.flow/config.md` is missing

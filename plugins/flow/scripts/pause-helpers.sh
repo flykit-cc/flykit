@@ -35,6 +35,28 @@ PRIVATE_RE="$(flow_private_regex)"
 
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 
+# Refuse a pause whose file set would commit a secret or a private path.
+# Called twice: once on the PREDICTED set before anything is mutated, and once
+# on the ACTUAL index after staging as a backstop against a wrong prediction.
+# One implementation so the two can never drift apart — they already had.
+flow_refuse_if_guarded() {
+    local paths="$1" staged="$2"
+    if [ -n "$SECRET_RE" ] && printf '%s' "$paths" | grep -qE "$SECRET_RE"; then
+        echo "FINISH ABORTED: these files match secret_globs and would be committed:" >&2
+        printf '%s' "$paths" | grep -E "$SECRET_RE" | sed 's/^/  /' >&2
+        echo "Add them to .gitignore (or remove them); if one is already staged, \`git reset\` it first." >&2
+        return 2
+    fi
+    # Private paths can only reach the index by being staged before finish ran —
+    # the staging loop never adds them itself.
+    if [ -n "$PRIVATE_RE" ] && printf '%s' "$staged" | grep -qE "$PRIVATE_RE"; then
+        echo "FINISH ABORTED: private paths are staged. Run \`git reset\` — these must never be pushed." >&2
+        printf '%s' "$staged" | grep -E "$PRIVATE_RE" | sed 's/^/  /' >&2
+        return 2
+    fi
+    return 0
+}
+
 cmd="${1:-}"
 shift || true
 
@@ -320,22 +342,7 @@ ${vtail}
 "
     done < <( { git -C "$REPO_ROOT" diff --name-only HEAD; git -C "$REPO_ROOT" ls-files --others --exclude-standard; } 2>/dev/null )
 
-    if [ -n "$SECRET_RE" ] && printf '%s\n%s' "$PREFLIGHT_STAGED" "$PREFLIGHT_NEW" | grep -qE "$SECRET_RE"; then
-      # This fires before staging, so the offender is usually an untracked
-      # working-tree file that `git reset` would not touch. Name it, and give
-      # advice that fits both origins.
-      echo "FINISH ABORTED: these files match secret_globs and would be committed:" >&2
-      printf '%s\n%s' "$PREFLIGHT_STAGED" "$PREFLIGHT_NEW" | grep -E "$SECRET_RE" | sed 's/^/  /' >&2
-      echo "Add them to .gitignore (or remove them); if one is already staged, \`git reset\` it first." >&2
-      exit 2
-    fi
-    # Private paths can only reach the index by being staged before finish ran —
-    # the loop below never adds them itself.
-    if [ -n "$PRIVATE_RE" ] && printf '%s' "$PREFLIGHT_STAGED" | grep -qE "$PRIVATE_RE"; then
-      echo "FINISH ABORTED: private paths are staged. Run \`git reset\` — these must never be pushed." >&2
-      printf '%s' "$PREFLIGHT_STAGED" | grep -E "$PRIVATE_RE" | sed 's/^/  /' >&2
-      exit 2
-    fi
+    flow_refuse_if_guarded "$(printf '%s\n%s' "$PREFLIGHT_STAGED" "$PREFLIGHT_NEW")" "$PREFLIGHT_STAGED" || exit 2
 
     "$0" log-block "$TITLE_FILE" "$BODY_FILE" >/dev/null
 
@@ -363,19 +370,10 @@ ${vtail}
       git -C "$REPO_ROOT" add -- "$f"
     done < <( { git -C "$REPO_ROOT" diff --name-only HEAD; git -C "$REPO_ROOT" ls-files --others --exclude-standard; } 2>/dev/null )
 
-    # Sensitive-file guard.
-    if [ -n "$SECRET_RE" ] && git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -qE "$SECRET_RE"; then
-      echo "FINISH ABORTED: staged secrets detected. Run \`git reset\` and check .gitignore." >&2
-      exit 2
-    fi
-
-    # Private-file guard. Catches anything staged before finish ran — the exact
-    # path by which .claude/ and docs/superpowers/ once reached a public remote.
-    if [ -n "$PRIVATE_RE" ] && git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -qE "$PRIVATE_RE"; then
-      echo "FINISH ABORTED: private paths are staged. Run \`git reset\` — these must never be pushed." >&2
-      git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -E "$PRIVATE_RE" | sed 's/^/  /' >&2
-      exit 2
-    fi
+    # Backstop: the pre-flight predicted this set, now check what git actually
+    # staged. Same rules, one implementation.
+    STAGED_NOW=$(git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null || true)
+    flow_refuse_if_guarded "$STAGED_NOW" "$STAGED_NOW" || exit 2
 
     if git -C "$REPO_ROOT" diff --cached --quiet 2>/dev/null; then
       COMMIT_INFO="(no changes to commit)"

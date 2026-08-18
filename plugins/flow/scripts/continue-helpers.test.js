@@ -70,7 +70,9 @@ test('two Goal sections are flagged as stale blocks', () => {
     const out = checkProgress(makeRepo(body));
     assert.match(out, /^exists:stale-blocks=\d+$/, `got ${out}`);
     // 2 goals + 2 paused lines.
-    assert.strictEqual(out, 'exists:stale-blocks=4');
+    // 2 Goals + 2 Paused = 2 EXCESS blocks, not 4 headers. The number has to be
+    // the count of things to remove, or a reader goes looking for four of them.
+    assert.strictEqual(out, 'exists:stale-blocks=2');
 });
 
 test('stacked NEXT blocks are flagged even when Goal and Paused at appear once', () => {
@@ -88,6 +90,16 @@ test('stacked NEXT blocks are flagged even when Goal and Paused at appear once',
     assert.match(checkProgress(makeRepo(body)), /^exists:stale-blocks=\d+$/);
 });
 
+test('the count is excess blocks, not total headers', () => {
+    const body = [
+        '## Goal', 'Ship it.', '',
+        '### NEXT (session 1)', '### NEXT (session 2)', '## Next steps',
+        'Paused at: 2026-08-18', '',
+    ].join('\n');
+    // 1 Goal + 1 Paused + 3 Next = 5 headers, but only 2 stale blocks.
+    assert.strictEqual(checkProgress(makeRepo(body)), 'exists:stale-blocks=2');
+});
+
 test('a single Next steps section is not flagged', () => {
     const body = '## Goal\nShip it.\n\n## Next steps\n- one thing\n\nPaused at: 2026-08-12\n';
     assert.strictEqual(checkProgress(makeRepo(body)), 'exists');
@@ -95,7 +107,7 @@ test('a single Next steps section is not flagged', () => {
 
 test('a duplicated Paused at alone is enough to flag', () => {
     const body = '## Goal\nOne goal.\n\nPaused at: 2026-07-01\n\nPaused at: 2026-08-12\n';
-    assert.strictEqual(checkProgress(makeRepo(body)), 'exists:stale-blocks=3');
+    assert.strictEqual(checkProgress(makeRepo(body)), 'exists:stale-blocks=1');
 });
 
 function staleHandoffs(root) {
@@ -215,5 +227,5 @@ test('an empty session dir reports nothing and creates no archive', () => {
 
 test('bold Paused at survives the markdown the pause step actually writes', () => {
     const body = '## Goal\nOne goal.\n\n**Paused at:** 2026-07-01\n\n**Paused at:** 2026-08-12\n';
-    assert.strictEqual(checkProgress(makeRepo(body)), 'exists:stale-blocks=3');
+    assert.strictEqual(checkProgress(makeRepo(body)), 'exists:stale-blocks=1');
 });
