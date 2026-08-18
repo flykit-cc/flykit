@@ -62,6 +62,9 @@ Edit that block: `status: retired`, `retired-because: <reason>`. If the block wa
 
 ## End of every invocation: rebuild the pointer task
 
+**If `TaskCreate`/`TaskList` are not available in this session, skip this section entirely and say so once** — e.g. "no pointer task: task tools unavailable here." The queue file is the source of truth and stays correct without it; the pointer is a convenience mirror. Do not fake it with a message that looks like a task, and do not fail the command. What must never happen is silence: a user who relies on the pointer to remember open questions would otherwise assume there are none.
+
+
 ```bash
 "$HELPERS" counts "$FILE"
 "$HELPERS" top-open "$FILE"

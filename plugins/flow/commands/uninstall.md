@@ -37,7 +37,7 @@ the file doesn't exist.
 
 2. **`.flow/session-log.md`** — append-only history of every past session.
    - *Keep it (recommended)* — the default; it is the one file here with no way back
-   - *Delete it too* — passes `--purge`
+   - *Delete it too* — passes `--purge`, which removes `session-log.md` **and** `questions.md`
 
 ## Step 3: Apply
 
@@ -56,6 +56,7 @@ Pass only the flags the answers call for.
 | `.flow/session-progress.md` | removed unless `--keep-progress`; **always ask first** |
 | `.flow/state/`, `.flow/.allow-*` | removed — arming markers are one-shot grants and must not survive |
 | `.flow/session-log.md` | **kept** unless `--purge`; append-only history, the one file here that cannot be regenerated |
+| `.flow/questions.md` | **kept** unless `--purge`; answered decisions and their rationale, equally unregenerable |
 | `CLAUDE.md` | only the `<!-- flow:begin -->…<!-- flow:end -->` block is stripped; the rest is yours. The file is deleted only if flow created it and it holds nothing else |
 | `issues/` | removed only when empty — issue files are never deleted |
 

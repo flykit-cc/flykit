@@ -123,6 +123,9 @@ reproduces the invisible-briefing bug this protocol exists to avoid.
 
 ## Chores
 
+- **Pointer task:** requires `TaskCreate`/`TaskList`, which not every session has.
+  When they are missing, skip the pointer and say so once — never silently.
+  `.flow/questions.md` is the source of truth; the task is a mirror.
 - **Pointer task:** exactly one task exists for the queue, rebuilt from the
   file — never trusted as storage. Title: `Q<n>: <asks> · +<N> open` (the
   top open question's `asks`, plus the count of remaining open questions).

@@ -156,3 +156,32 @@ test('plan() is pure — it reports without removing anything', () => {
     assert.ok(actions.length > 0);
     assert.deepStrictEqual(fs.readdirSync(root).sort(), before);
 });
+
+test('questions.md is kept by default — answered decisions are not regenerable', () => {
+    const root = makeProject();
+    fs.writeFileSync(path.join(root, '.flow', 'questions.md'), '## Q1\nstatus: answered\n');
+
+    const removed = plan(root, {}).filter(
+        (a) => a.kind === 'remove-file' && path.basename(a.path) === 'questions.md');
+    assert.deepStrictEqual(removed, [],
+        'removing the queue must never be a side effect of uninstalling');
+});
+
+test('the plan says questions.md was kept, so it is not silently left behind', () => {
+    const root = makeProject();
+    fs.writeFileSync(path.join(root, '.flow', 'questions.md'), '## Q1\nstatus: open\n');
+
+    const kept = plan(root, {}).find(
+        (a) => a.kind === 'keep' && path.basename(a.path) === 'questions.md');
+    assert.ok(kept, 'a kept file must appear in the plan');
+    assert.match(kept.note, /purge/, 'the note must say how to remove it');
+});
+
+test('--purge removes questions.md along with the log', () => {
+    const root = makeProject();
+    fs.writeFileSync(path.join(root, '.flow', 'questions.md'), '## Q1\nstatus: open\n');
+
+    const removed = plan(root, { purge: true }).filter(
+        (a) => a.kind === 'remove-file' && path.basename(a.path) === 'questions.md');
+    assert.strictEqual(removed.length, 1);
+});

@@ -15,7 +15,7 @@
  *   the <!-- flow:begin -->…<!-- flow:end --> block in CLAUDE.md
  *   issues/  — only when empty; never deletes issue files
  *
- * Keeps unless --purge:
+ * Keeps unless --purge (durable state: history and answered decisions):
  *   .flow/session-log.md — append-only history, expensive to lose and cheap
  *   to keep. It is the one file here that cannot be regenerated.
  *
@@ -48,7 +48,7 @@ function printHelp() {
         '  --target, -t      Project directory (default: cwd)\n' +
         '  --yes, -y         Actually remove; without it, only prints the plan\n' +
         '  --keep-progress   Keep .flow/session-progress.md (your live session thread)\n' +
-        '  --purge           Also delete .flow/session-log.md (append-only history)\n' +
+        '  --purge           Also delete .flow/session-log.md and .flow/questions.md\n' +
         '  --help, -h        Show this help\n'
     );
 }
@@ -97,7 +97,11 @@ function plan(target, opts = {}) {
     // cheap to keep and irreplaceable if you were mid-task, so the caller has
     // to decide explicitly rather than losing it as a side effect.
     if (!opts.keepProgress) files.push('session-progress.md');
-    if (opts.purge) files.push('session-log.md');
+    // questions.md holds answered decisions and their rationale — durable state
+    // like the log, not a live thread. Removing it as a side effect of uninstall
+    // would throw away the record of why things were decided, so it takes the
+    // same explicit --purge as the log.
+    if (opts.purge) files.push('session-log.md', 'questions.md');
     for (const name of files) {
         const p = path.join(flowDir, name);
         if (fs.existsSync(p)) actions.push({ kind: 'remove-file', path: p });
@@ -123,6 +127,14 @@ function plan(target, opts = {}) {
 
     const stateDir = path.join(flowDir, 'state');
     if (fs.existsSync(stateDir)) actions.push({ kind: 'remove-dir', path: stateDir });
+
+    if (!opts.purge && fs.existsSync(path.join(flowDir, 'questions.md'))) {
+        actions.push({
+            kind: 'keep',
+            path: path.join(flowDir, 'questions.md'),
+            note: 'answered decisions and open questions — use --purge to delete',
+        });
+    }
 
     if (!opts.purge && fs.existsSync(path.join(flowDir, 'session-log.md'))) {
         actions.push({
