@@ -16,6 +16,11 @@ Run each check and collect the result. Print a table at the end.
 - Does it parse? (frontmatter or key:value lines as defined in the template)
 - Are required fields present: `workflow_mode`, `pm_backend`, `dev_cmd`, `lint_cmd`, `build_cmd`, `test_cmd`?
 
+A blank `*_cmd` means "skip that step", which is legitimate for a project that has no such
+command. Report it, but do not tell the user to fill it in by hand — if the repo evidently
+supports one (a venv, a test file, a `Makefile` target), infer it, verify it runs, and write
+it into `.flow/config.md` yourself, exactly as `/flow:init` Step 4 does.
+
 ### 2. CLAUDE.md freshness
 
 - Does `$CLAUDE_PROJECT_DIR/CLAUDE.md` exist?

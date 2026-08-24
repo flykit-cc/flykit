@@ -71,8 +71,9 @@ Examples (replace with your own — these are illustrative, not defaults):
 - e.g. lint_cmd: `<your-linter>`
 - e.g. test_cmd: `<your-test-runner>`
 <!-- template-only:end -->
-> `/flow:init` fills these in from your manifest. A blank value means "skip that step" —
-> add one by hand if the detection missed it.
+> `/flow:init` fills these in: from your manifest where one exists, and otherwise the init
+> agent infers the command from the repo and verifies it runs before writing it here. A
+> blank value means "skip that step" — nothing in the repo supported one.
 
 ---
 

@@ -376,6 +376,37 @@ function renderClaudeMdTemplate(text, opts) {
     return out;
 }
 
+/**
+ * The closing line(s) of an init run, addressed to whoever can still act.
+ *
+ * `detected` is null when `.flow/config.md` already existed — nothing was
+ * detected this run and there is nothing to fill in. Otherwise any `*_cmd`
+ * no manifest evidenced comes back blank, and closing that gap is the init
+ * *agent's* job, not the user's: the agent can read the repo (a venv, a
+ * runnable `test_*.py`, a `Makefile` target), infer the command, and verify
+ * it runs — all in the step it is already in. Handing that back to the user
+ * as "edit config.md yourself" is homework, so this message never does.
+ */
+function doneMessage(detected) {
+    if (!detected) return '[flow init] Done.\n';
+
+    const blanks = STACK_CMD_KEYS.filter((key) => !detected[key]);
+    if (blanks.length === 0) {
+        return '[flow init] Done. Every stack command was detected from a manifest.\n';
+    }
+
+    const headline = blanks.length === STACK_CMD_KEYS.length
+        ? '[flow init] Done. No stack commands were detected from manifests.\n'
+        : `[flow init] Done. Not detected from manifests: ${blanks.join(', ')}.\n`;
+
+    return headline +
+        '[flow init] Next (agent, not the user): inspect the repo for the evidence a\n' +
+        '  manifest did not carry — a venv, a runnable test_*.py, a dev entrypoint, a\n' +
+        '  Makefile/justfile target — then infer each blank *_cmd, verify it actually\n' +
+        '  runs, and write the verified value into .flow/config.md. Leave a field blank\n' +
+        '  only when nothing in the repo supports one.\n';
+}
+
 function report(label, result) {
     if (result.missingSource) {
         process.stdout.write(`  ! ${label}: source template missing (${result.path})\n`);
@@ -421,8 +452,10 @@ function main() {
     report('.flow/config.md', configResult);
     // Only fill in a freshly-created config.md — an existing one may already
     // hold the user's own edits, which copyIfMissing correctly left alone.
+    // Stays null on a re-run: nothing was detected, so nothing is owed.
+    let detected = null;
     if (configResult.created) {
-        const detected = detectStackCommands(target);
+        detected = detectStackCommands(target);
         let text = fs.readFileSync(configDest, 'utf8');
         text = applyStackCommands(text, detected);
         text = applyPmFields(text, args);
@@ -473,7 +506,7 @@ function main() {
         report('issues/', ensureDir(issuesDir));
     }
 
-    process.stdout.write('\n[flow init] Done. Next: edit .flow/config.md to fill in your project commands.\n');
+    process.stdout.write(`\n${doneMessage(detected)}`);
     return 0;
 }
 
@@ -483,6 +516,7 @@ if (require.main === module) {
 
 module.exports = {
     main, parseArgs, copyIfMissing, ensureDir, appendSection, stripTemplateOnly, readPmBackend,
+    doneMessage,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
     detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
     VALID_WORKFLOW_MODES, VALID_PM_BACKENDS,

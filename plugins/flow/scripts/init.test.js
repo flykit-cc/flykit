@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-    copyIfMissing, ensureDir, appendSection, parseArgs, main,
+    copyIfMissing, ensureDir, appendSection, parseArgs, main, doneMessage,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
     detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
 } = require('./init');
@@ -26,6 +26,39 @@ function runInit(target, extraArgs = []) {
     } finally {
         process.argv = origArgv;
     }
+}
+
+// main() reports through process.stdout; the assertions about *what it tells whom*
+// need that text, so swap the sink for the duration of the (synchronous) call.
+function captureStdout(fn) {
+    const original = process.stdout.write;
+    let captured = '';
+    process.stdout.write = (chunk) => {
+        captured += chunk;
+        return true;
+    };
+    try {
+        fn();
+    } finally {
+        process.stdout.write = original;
+    }
+    return captured;
+}
+
+function runInitCapturing(target, extraArgs = []) {
+    let code;
+    const output = captureStdout(() => {
+        code = runInit(target, extraArgs);
+    });
+    return { code, output };
+}
+
+function blankDetection(overrides = {}) {
+    const detected = {
+        dev_cmd: '', lint_cmd: '', typecheck_cmd: '',
+        build_cmd: '', test_cmd: '', format_cmd: '',
+    };
+    return Object.assign(detected, overrides);
 }
 
 test('parseArgs: target defaults to cwd and both flag spellings resolve to absolute', () => {
@@ -694,4 +727,96 @@ test('main: re-running with new PM flags never touches an already-filled-in conf
     runInit(target, ['--workflow-mode', 'team', '--pm-backend', 'linear', '--pm-linear-team', 'ENG']);
 
     assert.equal(fs.readFileSync(configDest, 'utf8'), 'USER EDITED CONFIG', 'existing user config must never be rewritten by PM flags either');
+});
+
+
+// --- The closing message never hands the user homework the agent can do (issue #20) ---
+
+test('doneMessage: nothing detected — directs the AGENT to infer the commands, not the user', () => {
+    const message = doneMessage(blankDetection());
+
+    assert.match(message, /No stack commands were detected/);
+    assert.match(message, /agent, not the user/,
+        'the work is addressed to whoever can actually do it');
+    assert.match(message, /verify/i, 'an inferred command is worthless unverified');
+    assert.doesNotMatch(message, /edit \.flow\/config\.md to fill in/,
+        'the old "edit it yourself" punt must be gone');
+    assert.doesNotMatch(message, /by hand/);
+});
+
+test('doneMessage: partial detection — names exactly the keys still blank', () => {
+    const message = doneMessage(blankDetection({ lint_cmd: 'ruff check .', test_cmd: 'pytest' }));
+
+    assert.match(message, /Not detected from manifests: dev_cmd, typecheck_cmd, build_cmd, format_cmd/);
+    assert.doesNotMatch(message, /lint_cmd/, 'a detected key is not outstanding work');
+    assert.doesNotMatch(message, /test_cmd/);
+    assert.match(message, /agent, not the user/);
+});
+
+test('doneMessage: everything detected — plain done, no follow-up work', () => {
+    const message = doneMessage(blankDetection({
+        dev_cmd: 'pnpm dev', lint_cmd: 'pnpm lint', typecheck_cmd: 'pnpm typecheck',
+        build_cmd: 'pnpm build', test_cmd: 'pnpm test', format_cmd: 'pnpm format',
+    }));
+
+    assert.match(message, /Every stack command was detected/);
+    assert.doesNotMatch(message, /agent, not the user/, 'nothing is outstanding, so ask for nothing');
+});
+
+test('doneMessage: config.md already existed — nothing was detected, so nothing is owed', () => {
+    const message = doneMessage(null);
+
+    assert.equal(message, '[flow init] Done.\n');
+});
+
+test('main: script-style Python repo — output tells the agent to fill the blanks in, never the user', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    // requirements.txt + a venv + a runnable test file: plenty for an agent to work
+    // from, but no manifest the script itself reads. This is the issue's repro.
+    fs.writeFileSync(path.join(target, 'requirements.txt'), 'requests\n');
+    fs.mkdirSync(path.join(target, 'venv', 'bin'), { recursive: true });
+    fs.writeFileSync(path.join(target, 'test_thing.py'), 'def test_thing():\n    assert True\n');
+
+    const { code, output } = runInitCapturing(target, ['--pm-backend', 'local']);
+
+    assert.equal(code, 0);
+    assert.match(output, /No stack commands were detected/);
+    assert.match(output, /agent, not the user/);
+    assert.doesNotMatch(output, /edit \.flow\/config\.md to fill in/,
+        'the user must never be handed the config file as homework');
+    assert.doesNotMatch(output, /by hand/);
+
+    // The detection invariant itself is unchanged: blanks stay blank on disk.
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
+    assert.match(configText, /^- test_cmd:$/m);
+    assert.doesNotMatch(configText, /\{COMMAND_TO/);
+});
+
+test('main: fully-detected project keeps the plain detected-command output', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'pnpm-lock.yaml'), '');
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({
+        scripts: {
+            dev: 'vite', lint: 'eslint .', typecheck: 'tsc --noEmit',
+            build: 'vite build', test: 'vitest run', format: 'prettier --write .',
+        },
+    }));
+
+    const { output } = runInitCapturing(target);
+
+    assert.match(output, /detected: lint_cmd = pnpm lint/, 'the per-key detection lines are unchanged');
+    assert.match(output, /Every stack command was detected/);
+    assert.doesNotMatch(output, /agent, not the user/, 'nothing was left blank, so ask for nothing');
+});
+
+test('main: re-run over an existing config.md asks for no follow-up work', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    runInit(target);
+
+    const { output } = runInitCapturing(target);
+
+    assert.match(output, /\[flow init\] Done\./);
+    assert.doesNotMatch(output, /agent, not the user/,
+        're-running detects nothing, and an existing config is the user\'s own — leave it be');
+    assert.doesNotMatch(output, /No stack commands were detected/);
 });

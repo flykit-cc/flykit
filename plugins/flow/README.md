@@ -21,7 +21,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 
 | Command              | Purpose                                                                 |
 | -------------------- | ----------------------------------------------------------------------- |
-| `/flow:init`         | One-time setup. Drops config and memory templates into the project.     |
+| `/flow:init`         | One-time setup. Drops config and memory templates into the project, and fills in the stack commands itself — detected from your manifests, otherwise inferred from the repo and verified to run. |
 | `/flow:uninstall`    | Remove what `init` created, so you can start clean or re-init. Dry-run by default. |
 | `/flow:continue`     | Resume an in-progress session from `.flow/session-progress.md`, or start a new one if none exists. |
 | `/flow:questions`    | Work the open-question queue in `.flow/questions.md` — answer a round, list it, reopen or retire an entry. |
@@ -75,6 +75,8 @@ Custom agents communicate through files in `.flow/session/` (e.g. `investigation
 | `schema_glob` / `docs_glob` / `route_pattern` | Optional drift-check heuristics tuning |
 
 Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adapts to your stack. See `references/config-template.md` for the full annotated template.
+
+`/flow:init` fills the `*_cmd` fields in for you. It reads them straight off a manifest where there is one (`package.json` scripts, `go.mod`, `Cargo.toml`, `pyproject.toml`, …); where there isn't — a script-style repo with just a `requirements.txt` and a venv, say — the init agent infers each command from what is actually in the repo, runs it to confirm it works, and writes the verified value into `config.md`. You are never handed a blank field to fill in by hand. A field stays blank only when nothing in the repo supports a command there, which the consuming hooks read as "skip that step".
 
 ### `config.md` is private by default
 
