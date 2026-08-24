@@ -21,7 +21,9 @@
  * template's own default (workflow_mode/pm_backend) or come back blank
  * (pm_github_owner/pm_github_repo/pm_linear_team) — never a `{PLACEHOLDER}`.
  *
- * Each step prints "created" or "already exists, skipping".
+ * Each step prints "created" or "already exists, skipping". The run ends by naming
+ * every `*_cmd` still blank — a to-do for the agent driving init, which infers those
+ * from the repo and verifies them, never a to-do handed back to the user.
  */
 
 'use strict';
@@ -141,6 +143,23 @@ function stripTemplateOnly(text) {
 const STACK_CMD_KEYS = ['dev_cmd', 'lint_cmd', 'typecheck_cmd', 'build_cmd', 'test_cmd', 'format_cmd'];
 
 /**
+ * Makefile target -> config key. A Makefile is often the only "manifest" a
+ * script-style repo has, and its target names are explicit evidence of how the
+ * project is run. `fmt` is the common short spelling of `format`; the longer
+ * name is listed first so it wins when both targets exist.
+ */
+const MAKE_TARGET_TO_KEY = {
+    dev: 'dev_cmd',
+    lint: 'lint_cmd',
+    typecheck: 'typecheck_cmd',
+    'type-check': 'typecheck_cmd',
+    build: 'build_cmd',
+    test: 'test_cmd',
+    format: 'format_cmd',
+    fmt: 'format_cmd',
+};
+
+/**
  * Package-manager prefix for `npm run <script>`-style commands, chosen from
  * whichever lockfile is present. `npm run` is the fallback (no lockfile, or
  * a plain package-lock.json project).
@@ -155,6 +174,79 @@ function pmPrefix(target) {
     if (fs.existsSync(path.join(target, 'bun.lock'))) return 'bun';
     if (fs.existsSync(path.join(target, 'bun.lockb'))) return 'bun';
     return 'npm run';
+}
+
+/**
+ * Every root-level `requirements*.txt`, concatenated. A script-style Python
+ * repo often carries no manifest beyond these, so the dependency list is the
+ * only on-disk evidence of which tools it runs.
+ */
+function readRequirements(target) {
+    let out = '';
+    let entries = [];
+    try {
+        entries = fs.readdirSync(target);
+    } catch (e) {
+        return ''; // Unreadable target — nothing to detect from.
+    }
+    for (const name of entries) {
+        if (!/^requirements.*\.txt$/i.test(name)) continue;
+        try {
+            out += `${fs.readFileSync(path.join(target, name), 'utf8')}\n`;
+        } catch (e) {
+            // A directory or a dangling symlink by that name — not a dependency list.
+        }
+    }
+    return out;
+}
+
+/**
+ * Is `pkg` pinned in a requirements listing? Matches the distribution name at
+ * the start of a line, so `pytest-cov` never counts as evidence for `pytest`.
+ */
+function requires(requirements, pkg) {
+    return new RegExp(`^\\s*${pkg}(?=[\\s=<>!~;\\[]|$)`, 'im').test(requirements);
+}
+
+/**
+ * The project virtualenv's path for `tool`, relative to the project root, or ''
+ * when there is no venv holding it. A repo with a venv wants `.venv/bin/pytest`,
+ * not a bare `pytest` that resolves to whatever is on the ambient PATH.
+ */
+function venvBin(target, tool) {
+    for (const dir of ['.venv', 'venv', 'env']) {
+        for (const sub of ['bin', 'Scripts']) {
+            for (const name of [tool, `${tool}.exe`]) {
+                const rel = path.join(dir, sub, name);
+                if (fs.existsSync(path.join(target, rel))) return rel;
+            }
+        }
+    }
+    return '';
+}
+
+/** A Python tool, preferring the project's venv copy when it is installed there. */
+function pyTool(target, tool) {
+    return venvBin(target, tool) || tool;
+}
+
+/** The interpreter to run scripts with: the venv's, else a plain `python3`. */
+function pyRunner(target) {
+    return venvBin(target, 'python') || 'python3';
+}
+
+/**
+ * Target names declared in the project's Makefile. Variable assignments
+ * (`FOO := bar`) are not targets and are excluded.
+ */
+function readMakeTargets(target) {
+    for (const name of ['Makefile', 'makefile', 'GNUmakefile']) {
+        const file = path.join(target, name);
+        if (!fs.existsSync(file)) continue;
+        const text = fs.readFileSync(file, 'utf8');
+        return [...text.matchAll(/^([A-Za-z][A-Za-z0-9_-]*)[ \t]*:(?!=)/gm)].map((m) => m[1]);
+    }
+    return [];
 }
 
 /**
@@ -195,11 +287,24 @@ function detectStackCommands(target) {
     if (fs.existsSync(path.join(target, 'pyproject.toml'))) {
         pyproject = fs.readFileSync(path.join(target, 'pyproject.toml'), 'utf8');
     }
-    if (!detected.lint_cmd && (fs.existsSync(path.join(target, 'ruff.toml')) || /\[tool\.ruff\]/.test(pyproject))) {
-        detected.lint_cmd = 'ruff check .';
+    const requirements = readRequirements(target);
+    if (!detected.lint_cmd && (fs.existsSync(path.join(target, 'ruff.toml')) || /\[tool\.ruff\]/.test(pyproject) || requires(requirements, 'ruff'))) {
+        detected.lint_cmd = `${pyTool(target, 'ruff')} check .`;
     }
-    if (!detected.test_cmd && (fs.existsSync(path.join(target, 'pytest.ini')) || /\[tool\.pytest/.test(pyproject))) {
-        detected.test_cmd = 'pytest';
+    if (!detected.lint_cmd && (fs.existsSync(path.join(target, '.flake8')) || requires(requirements, 'flake8'))) {
+        detected.lint_cmd = `${pyTool(target, 'flake8')} .`;
+    }
+    if (!detected.test_cmd && (fs.existsSync(path.join(target, 'pytest.ini')) || /\[tool\.pytest/.test(pyproject) || requires(requirements, 'pytest'))) {
+        detected.test_cmd = pyTool(target, 'pytest');
+    }
+    if (!detected.typecheck_cmd && (fs.existsSync(path.join(target, 'mypy.ini')) || /\[tool\.mypy\]/.test(pyproject) || requires(requirements, 'mypy'))) {
+        detected.typecheck_cmd = `${pyTool(target, 'mypy')} .`;
+    }
+    if (!detected.format_cmd && (/\[tool\.black\]/.test(pyproject) || requires(requirements, 'black'))) {
+        detected.format_cmd = `${pyTool(target, 'black')} .`;
+    }
+    if (!detected.dev_cmd && fs.existsSync(path.join(target, 'manage.py'))) {
+        detected.dev_cmd = `${pyRunner(target)} manage.py runserver`;
     }
 
     if (fs.existsSync(path.join(target, 'go.mod'))) {
@@ -214,7 +319,47 @@ function detectStackCommands(target) {
         if (!detected.build_cmd) detected.build_cmd = 'cargo build --release';
     }
 
+    // Last, because a real manifest describes the stack better than a wrapper
+    // does: `make test` is evidence, but `pnpm test` is the command it wraps.
+    const makeTargets = readMakeTargets(target);
+    for (const [name, key] of Object.entries(MAKE_TARGET_TO_KEY)) {
+        if (!detected[key] && makeTargets.includes(name)) {
+            detected[key] = `make ${name}`;
+        }
+    }
+
     return detected;
+}
+
+/**
+ * An unsubstituted template placeholder, like `{COMMAND_TO_START_DEV_SERVER}`.
+ * A config.md still carrying one records no command at all, so it reads as
+ * blank rather than as a command literally named after the placeholder.
+ */
+const TEMPLATE_PLACEHOLDER = /^\{[A-Z_]+\}$/;
+
+/**
+ * The stack commands recorded in an existing config.md. Used on a re-run, where
+ * nothing is detected because the file is left alone, to report which keys are
+ * still blank. Missing keys, and keys left as a `{PLACEHOLDER}`, read as blank.
+ */
+function readStackCommands(configPath) {
+    const values = {};
+    for (const key of STACK_CMD_KEYS) values[key] = '';
+    if (!fs.existsSync(configPath)) return values;
+    const text = fs.readFileSync(configPath, 'utf8');
+    for (const key of STACK_CMD_KEYS) {
+        const m = text.match(new RegExp(`^[ \\t]*(?:-[ \\t]+)?${key}[ \\t]*:[ \\t]*(.*)$`, 'm'));
+        if (!m) continue;
+        const value = m[1].trim();
+        values[key] = TEMPLATE_PLACEHOLDER.test(value) ? '' : value;
+    }
+    return values;
+}
+
+/** The keys of `values` that carry no command — the agent's to-do list. */
+function missingStackCommands(values) {
+    return STACK_CMD_KEYS.filter((key) => !values[key]);
 }
 
 /**
@@ -376,6 +521,36 @@ function renderClaudeMdTemplate(text, opts) {
     return out;
 }
 
+/**
+ * Close out the run by naming the stack commands that are still blank.
+ *
+ * These are the agent's work, not the user's. Detection only reads manifests,
+ * so a script-style repo (a venv, a `test_*.py`, an entrypoint and no
+ * pyproject.toml) leaves keys blank that are trivially discoverable by looking
+ * at the repo — and handing that back as "edit .flow/config.md yourself" is
+ * homework for a step the agent can finish in one pass. The wording is aimed at
+ * the agent reading this output, and `commands/init.md` acts on it.
+ */
+function reportMissingStackCommands(configPath) {
+    if (!fs.existsSync(configPath)) {
+        process.stdout.write('\n[flow init] Done.\n');
+        return [];
+    }
+    const missing = missingStackCommands(readStackCommands(configPath));
+    if (missing.length === 0) {
+        process.stdout.write('\n[flow init] Done. Every stack command is filled in.\n');
+        return missing;
+    }
+    process.stdout.write(
+        `\n[flow init] Done. Stack commands still blank: ${missing.join(', ')}\n` +
+        '  These are for the agent to finish, not the user. Infer each one from the repo\n' +
+        '  (venv, entrypoint, test files, Makefile, CI config, README), verify it actually\n' +
+        '  runs, then write it into .flow/config.md. Leave a key blank only when the project\n' +
+        '  genuinely has nothing to run for it, and say which.\n'
+    );
+    return missing;
+}
+
 function report(label, result) {
     if (result.missingSource) {
         process.stdout.write(`  ! ${label}: source template missing (${result.path})\n`);
@@ -473,7 +648,7 @@ function main() {
         report('issues/', ensureDir(issuesDir));
     }
 
-    process.stdout.write('\n[flow init] Done. Next: edit .flow/config.md to fill in your project commands.\n');
+    reportMissingStackCommands(configDest);
     return 0;
 }
 
@@ -484,6 +659,8 @@ if (require.main === module) {
 module.exports = {
     main, parseArgs, copyIfMissing, ensureDir, appendSection, stripTemplateOnly, readPmBackend,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
+    readStackCommands, missingStackCommands, reportMissingStackCommands,
+    readRequirements, requires, venvBin, readMakeTargets,
     detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
     VALID_WORKFLOW_MODES, VALID_PM_BACKENDS,
 };

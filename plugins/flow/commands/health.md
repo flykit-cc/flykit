@@ -1,10 +1,13 @@
 ---
 description: Verify your workflow setup — config, hooks, required commands, PM backend connectivity.
-allowed-tools: Bash, Read, Glob, Grep
+allowed-tools: Bash, Read, Edit, Glob, Grep
 ---
 # /flow:health
 
 Sanity check. Run this after `/flow:init` and any time `/flow:*` commands feel broken.
+
+Diagnostic, not a repair tool: report what is wrong and where the fix is, and change nothing —
+with one exception, a blank `*_cmd` in config.md, which you fill in yourself (Check 1).
 
 ## Checks
 
@@ -15,6 +18,15 @@ Run each check and collect the result. Print a table at the end.
 - Does `$CLAUDE_PROJECT_DIR/.flow/config.md` exist?
 - Does it parse? (frontmatter or key:value lines as defined in the template)
 - Are required fields present: `workflow_mode`, `pm_backend`, `dev_cmd`, `lint_cmd`, `build_cmd`, `test_cmd`?
+
+A `*_cmd` key that is present but **blank** is your work, not the user's. Do not report it as
+"fill this in yourself" — that is exactly the chore `/flow:init` Step 3 exists to remove.
+Infer it from the repo, verify it runs, and write it in, following
+`${CLAUDE_PLUGIN_ROOT}/references/stack-command-inference.md`. Report it as `FIXED` with the
+command you wrote. Only a key you inferred and could *not* verify — or one with genuinely
+conflicting evidence — is worth raising with the user, and then with a recommendation, not an
+open question. A key that is blank because the project has no such step is `OK`, not a
+finding; say so in the note.
 
 ### 2. CLAUDE.md freshness
 
@@ -58,7 +70,7 @@ Print a table:
 
 ```
 CHECK                          STATUS    NOTE
-config.md                      OK
+config.md                      FIXED     test_cmd was blank -> .venv/bin/pytest (23 passed)
 CLAUDE.md freshness            STALE     last touched 124 days ago
 hooks                          OK        2 wired
 commands on PATH               FAIL      `<missing>` not found
@@ -66,4 +78,4 @@ pm backend                     OK
 git                            OK
 ```
 
-End with a one-line summary: `N/M checks passed`. If anything failed, point at the fix (`/flow:init`, install missing tool, etc.).
+End with a one-line summary: `N/M checks passed`. If anything failed, point at the fix (`/flow:init`, install missing tool, etc.) — and where the fix is something you can do, such as a blank `*_cmd`, do it rather than prescribe it.

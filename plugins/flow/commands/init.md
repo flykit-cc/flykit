@@ -1,13 +1,14 @@
 ---
 description: Bootstrap a new project with .flow/config.md and CLAUDE.md tailored to your stack.
-allowed-tools: Bash, Read, AskUserQuestion
+allowed-tools: Bash, Read, Edit, Glob, Grep, AskUserQuestion
 ---
 # /flow:init
 
 Bootstrap a project so the rest of `/flow:*` works. This drives `scripts/init.js`, which
 writes `.flow/config.md` and `CLAUDE.md` and auto-detects your stack commands from files
-already on disk (`package.json` scripts, `go.mod`, `Cargo.toml`, `pyproject.toml`, …). You
-only need to supply what the script cannot infer.
+already on disk (`package.json` scripts, `go.mod`, `Cargo.toml`, `pyproject.toml`,
+`requirements*.txt`, a `Makefile`, …). Anything a manifest does not declare, **you** work out
+from the repo in Step 3 — the user is only ever asked the questions in Step 1.
 
 ## Step 1: Ask the user
 
@@ -19,7 +20,8 @@ Use `AskUserQuestion`, batched where possible:
    what `git remote get-url origin` parses to.
 4. If `linear`: ask for `pm_linear_team` (the team key, e.g. `ENG`).
 
-Do not ask about dev/lint/typecheck/build/test/format commands — the script detects those.
+Do not ask about dev/lint/typecheck/build/test/format commands — the script detects what the
+manifests declare and Step 3 works out the rest from the repo.
 
 For the project name, don't ask by default — the script infers it from `package.json`'s
 `name` field, falling back to the directory basename. Only ask via `AskUserQuestion` if
@@ -45,7 +47,32 @@ Because nothing is overwritten, editing a template in a plugin update does *not*
 project that was already initialised. To pick up template changes, run `/flow:uninstall`
 first, then `/flow:init` again.
 
-## Step 3: Backend bootstrapping
+## Step 3: Fill in what detection missed
+
+The script ends by naming every key it could not fill:
+
+```
+[flow init] Done. Stack commands still blank: dev_cmd, build_cmd, format_cmd
+```
+
+That list is **yours to finish, not the user's**. A repo with a venv, a `tests/test_*.py` and
+an `app.py` has a test command and a dev command; they are simply not declared in a manifest.
+Telling the user to "edit `.flow/config.md` to fill in your project commands" hands back a
+chore you can complete in one pass.
+
+For each blank key, follow `${CLAUDE_PLUGIN_ROOT}/references/stack-command-inference.md`:
+find the evidence (entrypoints, test files, linter configs, `.github/workflows/`), prefer the
+project's own environment (`.venv/bin/pytest`, not a bare `pytest`), **run the command to
+verify it works**, then write it into the matching `- <key>:` line with `Edit`. Leave a key
+blank only when the project genuinely has nothing to run for it, and say which and why.
+
+Nothing here is overwritten by the script, so this step works the same on a re-run against an
+already-initialised project whose commands were left blank.
+
+Ask the user only when the evidence genuinely conflicts — two test runners and nothing in the
+repo picking between them. Never ask for a command you could have found and verified.
+
+## Step 4: Backend bootstrapping
 
 - `pm_backend=local`: create `$CLAUDE_PROJECT_DIR/issues/` with a `.gitkeep` and a
   `README.md` explaining the format (one markdown file per issue, frontmatter with
@@ -58,15 +85,17 @@ first, then `/flow:init` again.
 collaborators should get the same stack setup. Only `.flow/local.md` is machine-private
 (`private_globs` covers it), so machine-specific values belong there, not in `config.md`.
 
-## Step 4: Report
+## Step 5: Report
 
 Relay the script's output verbatim — which files were `created` / `left untouched`, and
-which stack commands were detected.
+which stack commands were detected. Then add what Step 3 produced: each command you inferred,
+how you verified it, and any key you deliberately left blank.
 
-## Step 5: Verify the setup
+## Step 6: Verify the setup
 
 Run `/flow:health` straight away rather than suggesting it. Init is exactly the point where
-a wrong answer is cheapest to fix, and health is read-only.
+a wrong answer is cheapest to fix, and health only diagnoses — the one thing it repairs is a
+blank `*_cmd`, which Step 3 should already have left nothing to do.
 
 Report only what health flags. If everything passes, one line is enough — do not reprint the
-whole table on top of the Step 4 report.
+whole table on top of the Step 5 report.
