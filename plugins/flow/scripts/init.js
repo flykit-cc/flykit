@@ -332,9 +332,16 @@ function detectStackCommands(target) {
 }
 
 /**
+ * An unsubstituted template placeholder, like `{COMMAND_TO_START_DEV_SERVER}`.
+ * A config.md still carrying one records no command at all, so it reads as
+ * blank rather than as a command literally named after the placeholder.
+ */
+const TEMPLATE_PLACEHOLDER = /^\{[A-Z_]+\}$/;
+
+/**
  * The stack commands recorded in an existing config.md. Used on a re-run, where
  * nothing is detected because the file is left alone, to report which keys are
- * still blank. Missing keys read as blank.
+ * still blank. Missing keys, and keys left as a `{PLACEHOLDER}`, read as blank.
  */
 function readStackCommands(configPath) {
     const values = {};
@@ -343,7 +350,9 @@ function readStackCommands(configPath) {
     const text = fs.readFileSync(configPath, 'utf8');
     for (const key of STACK_CMD_KEYS) {
         const m = text.match(new RegExp(`^[ \\t]*(?:-[ \\t]+)?${key}[ \\t]*:[ \\t]*(.*)$`, 'm'));
-        if (m) values[key] = m[1].trim();
+        if (!m) continue;
+        const value = m[1].trim();
+        values[key] = TEMPLATE_PLACEHOLDER.test(value) ? '' : value;
     }
     return values;
 }

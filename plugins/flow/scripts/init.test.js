@@ -799,6 +799,16 @@ test('readStackCommands: reads what config.md records, missing keys read blank',
     assert.equal(values.build_cmd, '', 'a key the file never mentions reads blank, not undefined');
 });
 
+test('readStackCommands: an unsubstituted {PLACEHOLDER} reads as blank, not as a command', () => {
+    const sandbox = mkSandbox();
+    const cfg = path.join(sandbox, 'config.md');
+    fs.writeFileSync(cfg, '- dev_cmd: {COMMAND_TO_START_DEV_SERVER}\n- test_cmd: pytest\n');
+    const values = readStackCommands(cfg);
+    assert.equal(values.dev_cmd, '', 'a placeholder left behind is not a filled-in command');
+    assert.equal(values.test_cmd, 'pytest', 'a real command is still read as-is');
+    assert.ok(missingStackCommands(values).includes('dev_cmd'), 'the placeholder key still needs inferring');
+});
+
 test('missingStackCommands: names exactly the keys with no command', () => {
     const missing = missingStackCommands({
         dev_cmd: 'python app.py', lint_cmd: '', typecheck_cmd: '',
