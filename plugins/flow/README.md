@@ -15,7 +15,7 @@ Then, inside any project:
 /flow:init
 ```
 
-This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project memory) from templates, plus an `issues/` directory for the local PM backend.
+This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project memory) from templates, plus an `issues/` directory for the local PM backend. Your dev/lint/test/build commands are filled in for you: detected from whichever manifest declares them, and where none does — a script-style repo with a venv and a `tests/` directory, say — inferred from the repo and verified by running them. You are not handed a config file to complete by hand.
 
 ## Commands
 
@@ -30,7 +30,7 @@ This creates `.flow/config.md` (project-level config) and `CLAUDE.md` (project m
 | `/flow:pause`        | Snapshot current state to `.flow/session-progress.md`; `land` also ships — CI checks, issue closing, ff-merge. |
 | `/flow:audit`        | Dry-run review: lint, typecheck, security pass without shipping.        |
 | `/flow:cleanup`      | Tidy stray branches, stale session files, and `.flow/session/`.     |
-| `/flow:health`       | Inspect the project's flow setup and report missing pieces.             |
+| `/flow:health`       | Inspect the project's flow setup and report missing pieces (and fill in any blank `*_cmd`). |
 | `/flow:deep-review`  | Spawn the reviewer agent with extra rigor on the working diff.          |
 | `/flow:flawz`        | Pressure-test a plan/spec/design for real flaws before you act on it.   |
 | `/flow:autopilot`    | Autonomous multi-sprint loop: agent team, deep-review, push, repeat.    |
@@ -74,7 +74,7 @@ Custom agents communicate through files in `.flow/session/` (e.g. `investigation
 | `question_wip`         | Max questions open at once in `.flow/questions.md` (default 3) |
 | `schema_glob` / `docs_glob` / `route_pattern` | Optional drift-check heuristics tuning |
 
-Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adapts to your stack. See `references/config-template.md` for the full annotated template.
+Hooks and helper scripts read these values. Nothing is hardcoded — `flow` adapts to your stack. See `references/config-template.md` for the full annotated template, and `references/stack-command-inference.md` for how the `*_cmd` values get worked out when no manifest declares them.
 
 ### `config.md` is private by default
 

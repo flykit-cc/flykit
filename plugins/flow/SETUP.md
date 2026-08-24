@@ -30,8 +30,10 @@ asks before dropping session state), then `/flow:init` again.
 
 ## 2. Check `.flow/config.md`
 
-Init fills in what it detected, so most projects only need a glance. A blank value means
-"skip that step" — fill it in by hand if detection missed something:
+Init fills these in for you — from your manifest where it declares them, and otherwise by
+inferring the command from the repo and verifying it runs — so most projects only need a
+glance. A blank value means "skip that step": nothing to run for it. Re-run `/flow:init` if a
+blank should have a command:
 
 ```
 workflow_mode: solo

@@ -10,6 +10,7 @@ const {
     copyIfMissing, ensureDir, appendSection, parseArgs, main,
     detectStackCommands, applyStackCommands, applyPmFields, pmPrefix,
     detectProjectName, detectLanguageRuntime, detectFramework, renderClaudeMdTemplate,
+    readStackCommands, missingStackCommands, requires, venvBin, readMakeTargets,
 } = require('./init');
 
 function mkSandbox() {
@@ -26,6 +27,33 @@ function runInit(target, extraArgs = []) {
     } finally {
         process.argv = origArgv;
     }
+}
+
+// init reports through process.stdout.write; capture it to assert on what the
+// agent driving init is actually told to do next.
+function captureStdout(fn) {
+    const original = process.stdout.write;
+    let out = '';
+    process.stdout.write = (chunk) => { out += chunk; return true; };
+    try {
+        fn();
+    } finally {
+        process.stdout.write = original;
+    }
+    return out;
+}
+
+// A script-style Python repo: a venv, a requirements list, a test file and an
+// entrypoint — no pyproject.toml, no package.json. The shape from issue #20.
+function mkPythonScriptRepo({ venvTools = ['python', 'pytest'], requirements = 'pytest==8.0.0\nrequests\n' } = {}) {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.mkdirSync(path.join(target, '.venv', 'bin'), { recursive: true });
+    for (const tool of venvTools) fs.writeFileSync(path.join(target, '.venv', 'bin', tool), '');
+    fs.writeFileSync(path.join(target, 'requirements.txt'), requirements);
+    fs.mkdirSync(path.join(target, 'tests'), { recursive: true });
+    fs.writeFileSync(path.join(target, 'tests', 'test_app.py'), 'def test_ok():\n    assert True\n');
+    fs.writeFileSync(path.join(target, 'app.py'), 'print("hi")\n');
+    return target;
 }
 
 test('parseArgs: target defaults to cwd and both flag spellings resolve to absolute', () => {
@@ -694,4 +722,129 @@ test('main: re-running with new PM flags never touches an already-filled-in conf
     runInit(target, ['--workflow-mode', 'team', '--pm-backend', 'linear', '--pm-linear-team', 'ENG']);
 
     assert.equal(fs.readFileSync(configDest, 'utf8'), 'USER EDITED CONFIG', 'existing user config must never be rewritten by PM flags either');
+});
+
+// --- no manifest names the commands: detect what the repo evidences, and hand
+//     whatever is left to the agent rather than to the user (issue #20) ---
+
+test('requires: a distribution name at line start counts, a longer name does not', () => {
+    const reqs = 'pytest-cov==5.0.0\nruff\n';
+    assert.equal(requires(reqs, 'ruff'), true);
+    assert.equal(requires(reqs, 'pytest'), false, 'pytest-cov is not evidence that pytest is a dependency');
+    assert.equal(requires('pytest==8.0.0\n', 'pytest'), true);
+    assert.equal(requires('  black[d] ; python_version > "3.9"\n', 'black'), true);
+});
+
+test('venvBin: finds a tool in the project venv, blank when there is none', () => {
+    const sandbox = mkSandbox();
+    assert.equal(venvBin(sandbox, 'pytest'), '');
+    fs.mkdirSync(path.join(sandbox, '.venv', 'bin'), { recursive: true });
+    fs.writeFileSync(path.join(sandbox, '.venv', 'bin', 'pytest'), '');
+    assert.equal(venvBin(sandbox, 'pytest'), path.join('.venv', 'bin', 'pytest'));
+});
+
+test('detectStackCommands: requirements.txt alone evidences lint/test/typecheck/format', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'requirements.txt'), 'pytest\nruff\nmypy\nblack\n');
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.test_cmd, 'pytest');
+    assert.equal(detected.lint_cmd, 'ruff check .');
+    assert.equal(detected.typecheck_cmd, 'mypy .');
+    assert.equal(detected.format_cmd, 'black .');
+});
+
+test('detectStackCommands: a venv copy of a tool wins over the bare name', () => {
+    const target = mkPythonScriptRepo({ venvTools: ['python', 'pytest', 'ruff'], requirements: 'pytest\nruff\n' });
+    const detected = detectStackCommands(target);
+    assert.equal(detected.test_cmd, path.join('.venv', 'bin', 'pytest'));
+    assert.equal(detected.lint_cmd, `${path.join('.venv', 'bin', 'ruff')} check .`);
+});
+
+test('detectStackCommands: manage.py is a Django dev server, run by the venv interpreter', () => {
+    const target = mkPythonScriptRepo({ venvTools: ['python'] });
+    fs.writeFileSync(path.join(target, 'manage.py'), '');
+    const detected = detectStackCommands(target);
+    assert.equal(detected.dev_cmd, `${path.join('.venv', 'bin', 'python')} manage.py runserver`);
+});
+
+test('readMakeTargets: lists targets and skips variable assignments', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'Makefile'), 'PYTHON := python3\n\ntest:\n\tpytest\n\nlint:\n\truff check .\n');
+    assert.deepEqual(readMakeTargets(sandbox), ['test', 'lint']);
+});
+
+test('detectStackCommands: Makefile targets fill keys no manifest claimed', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'Makefile'), 'dev:\n\tpython app.py\n\nfmt:\n\tblack .\n\ntest:\n\tpytest\n');
+    const detected = detectStackCommands(sandbox);
+    assert.equal(detected.dev_cmd, 'make dev');
+    assert.equal(detected.format_cmd, 'make fmt');
+    assert.equal(detected.test_cmd, 'make test');
+});
+
+test('detectStackCommands: a manifest command beats the Makefile wrapper around it', () => {
+    const sandbox = mkSandbox();
+    fs.writeFileSync(path.join(sandbox, 'package.json'), JSON.stringify({ scripts: { test: 'vitest run' } }));
+    fs.writeFileSync(path.join(sandbox, 'Makefile'), 'test:\n\tnpm test\n');
+    assert.equal(detectStackCommands(sandbox).test_cmd, 'npm run test');
+});
+
+test('readStackCommands: reads what config.md records, missing keys read blank', () => {
+    const sandbox = mkSandbox();
+    const cfg = path.join(sandbox, 'config.md');
+    fs.writeFileSync(cfg, '- dev_cmd: python app.py\n- test_cmd:\n');
+    const values = readStackCommands(cfg);
+    assert.equal(values.dev_cmd, 'python app.py');
+    assert.equal(values.test_cmd, '');
+    assert.equal(values.build_cmd, '', 'a key the file never mentions reads blank, not undefined');
+});
+
+test('missingStackCommands: names exactly the keys with no command', () => {
+    const missing = missingStackCommands({
+        dev_cmd: 'python app.py', lint_cmd: '', typecheck_cmd: '',
+        build_cmd: '', test_cmd: 'pytest', format_cmd: '',
+    });
+    assert.deepEqual(missing, ['lint_cmd', 'typecheck_cmd', 'build_cmd', 'format_cmd']);
+});
+
+test('main: a script-style Python repo gets its commands detected, not left blank', () => {
+    const target = mkPythonScriptRepo({ venvTools: ['python', 'pytest'] });
+
+    runInit(target);
+
+    const configText = fs.readFileSync(path.join(target, '.flow', 'config.md'), 'utf8');
+    const venvPytest = path.join('.venv', 'bin', 'pytest');
+    assert.match(configText, new RegExp(`^- test_cmd: ${venvPytest.replace(/[.\\/\\\\]/g, '\\$&')}$`, 'm'));
+});
+
+test('main: what is still blank is addressed to the agent, never handed to the user', () => {
+    const target = mkPythonScriptRepo();
+
+    const out = captureStdout(() => runInit(target));
+
+    assert.match(out, /Stack commands still blank: .*dev_cmd/, 'the blanks must be named, not left for the user to find');
+    assert.match(out, /agent to finish, not the user/);
+    assert.match(out, /verify it actually\n.*runs/, 'the agent is told to verify, not just guess');
+    assert.doesNotMatch(out, /Next: edit \.flow\/config\.md/, 'init must not hand the user an editing chore');
+});
+
+test('main: re-running names the blanks left in an existing config.md', () => {
+    const target = mkPythonScriptRepo();
+    runInit(target);
+
+    const out = captureStdout(() => runInit(target));
+
+    assert.match(out, /Stack commands still blank: .*build_cmd/, 'a re-run reports the existing file\'s blanks, not the fresh detection');
+});
+
+test('main: a fully-detected project reports no work left', () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-init-'));
+    fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({
+        scripts: { dev: 'vite', lint: 'eslint .', typecheck: 'tsc --noEmit', build: 'vite build', test: 'vitest run', format: 'prettier --write .' },
+    }));
+
+    const out = captureStdout(() => runInit(target));
+
+    assert.match(out, /Every stack command is filled in/);
+    assert.doesNotMatch(out, /still blank/);
 });
