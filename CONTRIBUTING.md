@@ -2,6 +2,40 @@
 
 Thanks for your interest in flykit! This guide covers how to add a new plugin, work on an existing one, develop locally, and submit changes.
 
+## Two manifests, two audiences
+
+flykit lists things for more than one ecosystem, and they are listed in different files:
+
+| You are adding | Goes in | Lives in |
+|---|---|---|
+| A Claude Code **marketplace plugin** | `.claude-plugin/marketplace.json` | `plugins/<name>/` in this repo |
+| A Claude Code **standalone tool**, or a plugin for **another ecosystem** (e.g. DeepSeek Harness) | `tools.json` | its own repo, referenced by URL |
+
+`.claude-plugin/marketplace.json` is read by Claude Code itself. It only understands Claude Code plugins — **never put a non-Claude-Code entry in it**, even one that happens to be about Claude Code. Everything else goes in `tools.json`.
+
+### Adding a `tools.json` entry
+
+Add an object under `tools`:
+
+```json
+{
+  "name": "your-thing",
+  "slug": "your-thing",
+  "ecosystem": "dsh",
+  "description": "One line.",
+  "repo": "https://github.com/flykit-cc/your-thing",
+  "npm": "your-thing",
+  "install": "dsh plugin --profile web add your-thing",
+  "category": "agents",
+  "keywords": ["..."],
+  "license": "MIT",
+  "version": "0.1.0",
+  "web": "./tools/your-thing/web.json"
+}
+```
+
+`ecosystem` is required — `claude-code` or `dsh` today; add a new value when a new ecosystem shows up. Then create `tools/<slug>/web.json` with the same shape used by plugins (see `tools/ghostcode/web.json`), plus `install` and `externalRepo`. `version` here is display metadata only — the source of truth is the tool's own repo, so keep it roughly in sync, no CI enforces it.
+
 ## Plugin contents
 
 A Claude Code plugin can bundle any mix of the following. flykit plugins typically lead with skills, but the other types are fair game.

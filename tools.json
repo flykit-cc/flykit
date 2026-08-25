@@ -1,8 +1,10 @@
 {
   "$schema": "https://flykit.cc/schemas/tools.json",
-  "name": "flykit-tools",
-  "description": "Companion tools for Claude Code",
-  "owner": { "name": "kaiomp" },
+  "name": "flykit-registry",
+  "description": "Tools and plugins across ecosystems — Claude Code companions, DeepSeek Harness plugins",
+  "owner": {
+    "name": "kaiomp"
+  },
   "tools": [
     {
       "name": "ghostcode",
@@ -12,10 +14,34 @@
       "npm": "@flykit/ghostcode",
       "install": "git clone https://github.com/flykit-cc/ghostcode && npm install -g ./ghostcode",
       "category": "workflow",
-      "keywords": ["ghostty", "launcher", "picker"],
+      "keywords": [
+        "ghostty",
+        "launcher",
+        "picker"
+      ],
       "license": "MIT",
       "version": "0.2.0",
-      "web": "./tools/ghostcode/web.json"
+      "web": "./tools/ghostcode/web.json",
+      "ecosystem": "claude-code"
+    },
+    {
+      "name": "dsh-claude-live",
+      "slug": "dsh-claude-live",
+      "ecosystem": "dsh",
+      "description": "Run Claude Code as a subagent inside DeepSeek Harness, with its steps streaming live into the session view.",
+      "repo": "https://github.com/flykit-cc/dsh-claude-live",
+      "npm": "dsh-claude-live",
+      "install": "dsh plugin --profile web add dsh-claude-live",
+      "category": "agents",
+      "keywords": [
+        "deepseek-harness",
+        "cordis",
+        "claude-code",
+        "subagent"
+      ],
+      "license": "MIT",
+      "version": "0.1.1",
+      "web": "./tools/dsh-claude-live/web.json"
     }
   ]
 }

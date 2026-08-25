@@ -12,6 +12,8 @@ on:
     paths:
       - '.claude-plugin/**'
       - 'plugins/**'
+      - 'tools.json'
+      - 'tools/**'
   workflow_dispatch:
 
 jobs:
