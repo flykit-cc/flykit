@@ -89,6 +89,30 @@ jobs:
             exit 1
           fi
 
+      - name: Validate tools.json registry
+        run: |
+          set -e
+          jq empty tools.json
+          fail=0
+          while IFS= read -r row; do
+            slug=$(echo "$row" | jq -r '.slug')
+            eco=$(echo "$row" | jq -r '.ecosystem // empty')
+            web=$(echo "$row" | jq -r '.web // empty')
+            if [ -z "$eco" ]; then
+              echo "::error file=tools.json::entry '$slug' is missing an 'ecosystem' field. See CONTRIBUTING.md."
+              fail=$((fail+1))
+            fi
+            path="${web#./}"
+            if [ -z "$web" ] || [ ! -f "$path" ]; then
+              echo "::error file=tools.json::entry '$slug' points at missing web.json '$web'"
+              fail=$((fail+1))
+            else
+              jq empty "$path"
+              echo "ok: $slug ($eco) -> $path"
+            fi
+          done < <(jq -c '.tools[]' tools.json)
+          if [ "$fail" -gt 0 ]; then exit 1; fi
+
       - name: Plugin versions are consistent and bumped
         env:
           # On a PR, compare against the merge base. On a push to main, compare

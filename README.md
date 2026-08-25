@@ -4,7 +4,7 @@
 
 # flykit
 
-**Open-source [Claude Code](https://docs.claude.com/en/docs/claude-code) plugins for real-world workflows.**
+**Open-source plugins and tools for AI coding agents — [Claude Code](https://docs.claude.com/en/docs/claude-code) and [DeepSeek Harness](https://github.com/deepseek-ai).**
 
 [![MIT License](https://img.shields.io/github/license/flykit-cc/flykit?style=flat-square&labelColor=111&color=000)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin_marketplace-000?style=flat-square&labelColor=111)](https://docs.claude.com/en/docs/claude-code/plugins)
@@ -14,16 +14,23 @@
 <br/>
 
 <a href="https://flykit.cc">
-  <img src="https://flykit.cc/opengraph-image.png" alt="flykit — Claude Code plugins for real-world workflows" width="720" />
+  <img src="https://flykit.cc/opengraph-image.png" alt="flykit — plugins and tools for AI coding agents" width="720" />
 </a>
 
 </div>
 
 ---
 
-A marketplace of small, focused plugins that turn Claude Code into a useful assistant for the things you actually do — taxes, paperwork, recurring chores. Each plugin is self-contained: skills, scripts, reference docs, MIT-licensed.
+A collection of small, focused plugins and tools for AI coding agents — the things you actually do: taxes, paperwork, dev workflow, recurring chores. Everything here is self-contained and MIT-licensed.
 
-## Install
+flykit spans two ecosystems today:
+
+| Ecosystem | What lives here | How it is listed |
+|---|---|---|
+| **Claude Code** | Plugins installed through the flykit marketplace, plus standalone companion tools | [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json) (plugins), [`tools.json`](./tools.json) (tools) |
+| **DeepSeek Harness (dsh)** | Harness plugins, each in its own repo | [`tools.json`](./tools.json) |
+
+## Claude Code plugins
 
 In Claude Code, add the marketplace:
 
@@ -37,17 +44,33 @@ Then install any plugin from it:
 /plugin install steuer@flykit
 ```
 
-## Plugins
-
 | Plugin | What it does |
 |---|---|
 | [**flow**](./plugins/flow) | A stack-agnostic dev workflow — session lifecycle (`continue` / `status` / `pause`), parallel deep reviews, and an autonomous autopilot loop. Reads your stack from a per-repo `.flow/config.md`. |
 | [**steuer**](./plugins/steuer) | German freelancer tax filing — fetch transactions from Wise, classify with Claude, calculate the EÜR, walk through ELSTER. |
-| _more coming_ | Got a workflow worth automating? Open an issue or see [CONTRIBUTING.md](./CONTRIBUTING.md). |
+
+## Claude Code tools
+
+Standalone — not marketplace plugins, installed on their own.
+
+| Tool | What it does |
+|---|---|
+| [**ghostcode**](https://github.com/flykit-cc/ghostcode) | Ghostty launcher for Claude Code — project picker, per-project tints, model/provider/mode switcher. |
+
+## DeepSeek Harness plugins
+
+| Plugin | What it does |
+|---|---|
+| [**dsh-claude-live**](https://github.com/flykit-cc/dsh-claude-live) | Run Claude Code as a subagent inside DeepSeek Harness, with its steps streaming live into the session view. `dsh plugin --profile web add dsh-claude-live` |
+
+Got something worth adding? Open an issue or see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## How it works
 
-flykit is a standard Claude Code [plugin marketplace](https://docs.claude.com/en/docs/claude-code/plugins). Each plugin is a directory under [`plugins/`](./plugins) containing its manifest, skills, scripts, and references.
+Two manifests, deliberately separate:
+
+- [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json) is the **Claude Code marketplace contract**. Claude Code reads it directly and only understands Claude Code plugins, so nothing from another ecosystem ever goes in it. Each plugin is a directory under [`plugins/`](./plugins) containing its manifest, skills, scripts, and references.
+- [`tools.json`](./tools.json) is the **ecosystem-neutral registry** for everything that is not a marketplace plugin: standalone Claude Code tools and dsh plugins alike. Each entry carries an `ecosystem` field (`claude-code` or `dsh`), lives in its own repo, and points at a `web.json` sidecar under [`tools/`](./tools).
 
 Each plugin also has a [`web.json`](./plugins/steuer/web.json) sidecar — that's what [flykit.cc](https://flykit.cc) renders (tagline, features, skills, sources). The site fetches `marketplace.json` + each `web.json` + live star count at build time.
 
