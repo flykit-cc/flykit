@@ -49,7 +49,7 @@
       "ecosystem": "dsh",
       "description": "flykit for DeepSeek Harness — explorer with live file watch, agent terminals (Claude Code, Pi, Codex), DSH agent tools, searchable model picker, Claude usage bars and a status line. Fly your agents.",
       "repo": "https://github.com/flykit-cc/dsh-flykit",
-      "install": "dsh plugin --profile web add github:flykit-cc/dsh-flykit",
+      "install": "dsh plugin --profile web add dsh-flykit",
       "category": "agents",
       "keywords": [
         "dsh-plugin",
@@ -62,7 +62,8 @@
       ],
       "license": "MIT",
       "version": "0.1.0",
-      "web": "./tools/dsh-flykit/web.json"
+      "web": "./tools/dsh-flykit/web.json",
+      "npm": "dsh-flykit"
     },
     {
       "name": "uisper",
