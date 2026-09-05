@@ -4,7 +4,7 @@
 
 # flykit
 
-**Open-source plugins and tools for AI coding agents — [Claude Code](https://docs.claude.com/en/docs/claude-code) and [DeepSeek Harness](https://github.com/deepseek-ai).**
+**Open-source plugins and tools for AI coding agents — [Claude Code](https://docs.claude.com/en/docs/claude-code) and [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh).**
 
 [![MIT License](https://img.shields.io/github/license/flykit-cc/flykit?style=flat-square&labelColor=111&color=000)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin_marketplace-000?style=flat-square&labelColor=111)](https://docs.claude.com/en/docs/claude-code/plugins)
@@ -21,7 +21,7 @@
 
 ---
 
-A collection of small, focused plugins and tools for AI coding agents — the things you actually do: taxes, paperwork, dev workflow, recurring chores. Everything here is self-contained and MIT-licensed.
+A collection of small, focused plugins and tools for AI coding agents — the things you actually do: taxes, paperwork, dev workflow, recurring chores, and the cockpit you drive your agents from. Everything here is self-contained and MIT-licensed.
 
 flykit spans two ecosystems today:
 
@@ -73,25 +73,31 @@ Two manifests, deliberately separate:
 - [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json) is the **Claude Code marketplace contract**. Claude Code reads it directly and only understands Claude Code plugins, so nothing from another ecosystem ever goes in it. Each plugin is a directory under [`plugins/`](./plugins) containing its manifest, skills, scripts, and references.
 - [`tools.json`](./tools.json) is the **ecosystem-neutral registry** for everything that is not a marketplace plugin: standalone Claude Code tools and dsh plugins alike. Each entry carries an `ecosystem` field (`claude-code` or `dsh`), lives in its own repo, and points at a `web.json` sidecar under [`tools/`](./tools).
 
-Each plugin also has a [`web.json`](./plugins/steuer/web.json) sidecar — that's what [flykit.cc](https://flykit.cc) renders (tagline, features, skills, sources). The site fetches `marketplace.json` + each `web.json` + live star count at build time.
+Every entry in either manifest also has a `web.json` sidecar — [`plugins/<name>/web.json`](./plugins/steuer/web.json) for marketplace plugins, [`tools/<slug>/web.json`](./tools/dsh-flykit/web.json) for tools.json entries. That's what [flykit.cc](https://flykit.cc) renders (tagline, features, skills, sources). The site fetches `marketplace.json` + `tools.json` + each `web.json` + live star count at build time.
 
 **Pushes to `main` auto-publish to [flykit.cc](https://flykit.cc) within about a minute.**
 
 ```
-  plugins/<name>/             flykit.cc
-  ├── .claude-plugin/         ├── marketplace fetch  (build time + 1h ISR)
-  │   └── plugin.json ─────────► Claude Code
+  plugins/<name>/                     flykit.cc
+  ├── .claude-plugin/                 ├── marketplace fetch  (build time + 1h ISR)
+  │   └── plugin.json ─────────────────► Claude Code
   ├── skills/
   ├── scripts/
-  ├── web.json ───────────────► flykit.cc renderer
+  ├── web.json ───────────────────────► flykit.cc renderer
   └── README.md
+
+  tools.json ───────────────────────► flykit.cc registry fetch
+  └── entry.web ──► tools/<slug>/web.json ──► flykit.cc renderer
+                    (the tool itself lives in its own repo:
+                     a dsh plugin installs with dsh plugin --profile web add)
 ```
 
 ## Contributing
 
 PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
-- Adding a new plugin (full checklist)
+- Adding a new Claude Code marketplace plugin (full checklist)
+- Adding a `tools.json` entry — a standalone tool or a plugin for another ecosystem, dsh included
 - Working on existing plugins — debugging locally, adding skills/commands/agents, extending pluggable interfaces (e.g., steuer's [transaction-source contract](./plugins/steuer/scripts/sources/README.md))
 - Code style + PR checklist
 

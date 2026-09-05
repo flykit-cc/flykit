@@ -1,6 +1,6 @@
 # Contributing to flykit
 
-Thanks for your interest in flykit! This guide covers how to add a new plugin, work on an existing one, develop locally, and submit changes.
+Thanks for your interest in flykit! This guide covers how to add a new Claude Code plugin or a `tools.json` entry (a standalone tool, or a plugin for another ecosystem such as DeepSeek Harness), work on an existing one, develop locally, and submit changes.
 
 ## Two manifests, two audiences
 
@@ -53,15 +53,21 @@ For the full plugin manifest schema, see https://docs.claude.com/en/docs/claude-
 ```
 flykit/
 ├── .claude-plugin/
-│   └── marketplace.json     # Marketplace manifest — lists every plugin
+│   └── marketplace.json     # Claude Code marketplace manifest — marketplace plugins only
+├── tools.json               # ecosystem-neutral registry — standalone tools and dsh plugins
 ├── plugins/
-│   └── <plugin-name>/       # One directory per plugin
+│   └── <plugin-name>/       # One directory per marketplace plugin
 │       ├── .claude-plugin/
 │       │   └── plugin.json
 │       ├── skills/
 │       ├── scripts/
 │       ├── references/
 │       └── README.md
+├── tools/
+│   └── <slug>/
+│       └── web.json         # display sidecar for a tools.json entry (the tool lives in its own repo)
+├── .flykit/
+│   └── announcement.json    # site-wide announcement bar on flykit.cc
 ├── scripts/
 │   └── check-plugin-versions.sh   # version guard, also run by CI
 ├── README.md
@@ -150,7 +156,7 @@ flykit/
 
 ## Working on an existing plugin
 
-Most contributions are incremental — fixing a bug, adding a skill to an existing plugin, or extending one of its pluggable interfaces.
+Most contributions are incremental — fixing a bug, adding a skill to an existing plugin, or extending one of its pluggable interfaces. This section is about marketplace plugins, which live in this repo. A `tools.json` entry lives in its own repo: work on it there, and change only its `tools.json` row and `tools/<slug>/web.json` here.
 
 - **Debug locally.** Clone the repo and load the plugin directory directly (see [Local development](#local-development) below). Turn on `--debug` to see hook, MCP, and skill resolution logs. Run scripts in isolation with `node plugins/<plugin>/scripts/<script>.js` to reproduce issues without the Claude Code layer in the way.
 - **Add a new skill / command / agent.** Drop a new file under the relevant directory (`skills/<name>/SKILL.md`, `commands/<name>.md`, `agents/<name>.md`). No manifest change needed — Claude Code discovers them by convention. Bump `version` in `plugin.json` and the matching entry in `marketplace.json`.
@@ -188,7 +194,7 @@ CI runs the same script on pull requests **and on direct pushes to `main`**.
 
 ## Local development
 
-Clone the repo first:
+For Claude Code marketplace plugins, which live in this repo. Clone it first:
 
 ```bash
 git clone https://github.com/flykit-cc/flykit.git
@@ -226,9 +232,22 @@ For pure script changes, you can run the scripts directly with Node, outside Cla
 node plugins/<your-plugin>/scripts/<script>.js --year 2024
 ```
 
+### DeepSeek Harness plugins
+
+A dsh plugin lives in its own repo, so develop it there and add it to a profile from the checkout:
+
+```bash
+npm run build
+dsh plugin --profile web add .            # remove with: dsh plugin --profile web remove <name>
+dsh --profile web --dump-config | grep <name>   # layer present?
+dsh web --port 3080 --no-open             # http://127.0.0.1:3080
+```
+
+Only its `tools.json` row and `tools/<slug>/web.json` land in this repo.
+
 ## Code style
 
-- **JavaScript**: CommonJS (Node 20+), 4-space indent, single quotes, trailing semicolons.
+- **JavaScript**: CommonJS (Node 22+, what CI runs), 4-space indent, single quotes, trailing semicolons.
 - **Markdown**: ATX headers (`#`), tables for structured data, fenced code blocks with language tags.
 - **JSON**: 2-space indent.
 - **No emojis** in code, comments, or docs unless the user explicitly asked for them.
@@ -250,8 +269,8 @@ The site-wide announcement bar on [flykit.cc](https://flykit.cc) reads from `.fl
 ## Reporting issues
 
 File issues at https://github.com/flykit-cc/flykit/issues. Include:
-- Plugin name and version
-- Claude Code version
+- Plugin or tool name and version
+- Version of the agent it runs under — Claude Code, or `dsh --version` for a DeepSeek Harness plugin
 - Steps to reproduce
 - Expected vs actual behavior
 

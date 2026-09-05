@@ -10,7 +10,7 @@
       "name": "steuer",
       "description": "German freelancer tax filing \u2014 fetch transactions, classify with AI, calculate E\u00dcR, guide through ELSTER",
       "source": "./plugins/steuer",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "finance",
       "keywords": [
         "tax",
@@ -24,9 +24,9 @@
     },
     {
       "name": "flow",
-      "description": "Stack-agnostic AI dev workflow \u2014 twelve slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
+      "description": "Stack-agnostic AI dev workflow \u2014 thirteen slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
       "source": "./plugins/flow",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "category": "workflow",
       "keywords": [
         "workflow",

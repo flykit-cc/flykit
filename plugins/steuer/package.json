@@ -1,6 +1,6 @@
 {
   "name": "@flykit/steuer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "German freelancer tax filing scripts (EÜR / ELSTER) for the flykit Claude Code plugin.",
   "license": "MIT",
   "private": true,

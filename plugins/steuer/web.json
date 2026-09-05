@@ -3,8 +3,8 @@
   "author": "kaiomp",
   "authorUrl": "https://github.com/kaiomp",
   "categories": ["Finance", "Germany", "Freelancer"],
-  "tagline": "German freelancer tax filing — fetch transactions, classify with AI, calculate EUR, file via ELSTER.",
-  "description": "Steuer is a Claude Code plugin that automates the German freelancer tax workflow end-to-end. It parses Wise bank statements, classifies transactions into income and expense categories, calculates your EUR (Einnahmen-Ueberschuss-Rechnung), and walks you through filing via ELSTER.",
+  "tagline": "German freelancer tax filing — fetch transactions, classify with AI, calculate the EÜR, file via ELSTER.",
+  "description": "Steuer is a Claude Code plugin that automates the German freelancer tax workflow end-to-end. It parses Wise bank statements, classifies transactions into income and expense categories, calculates your EÜR (Einnahmen-Überschuss-Rechnung), and walks you through filing via ELSTER.",
   "features": [
     "Parse Wise CSV bank statements into structured transactions",
     "Convert USD income to EUR using official ECB reference rates",
@@ -14,7 +14,7 @@
   ],
   "useCases": [
     "Freelancers paid in USD via Wise who file taxes in Germany",
-    "Solopreneurs preparing their annual EUR for the Finanzamt",
+    "Solopreneurs preparing their annual EÜR for the Finanzamt",
     "Anyone who needs ECB-rate currency conversion with an audit trail"
   ],
   "skills": [
@@ -24,11 +24,11 @@
     },
     {
       "name": "calculate-euer",
-      "description": "Calculate your Einnahmen-Ueberschuss-Rechnung from classified transactions, with USD-to-EUR conversion at ECB rates."
+      "description": "Calculate your Einnahmen-Überschuss-Rechnung from classified transactions, with USD-to-EUR conversion at ECB rates."
     },
     {
       "name": "elster-guide",
-      "description": "Walk through ELSTER form filing line by line, mapping your EUR results to the right fields."
+      "description": "Walk through ELSTER form filing line by line, mapping your EÜR results to the right fields."
     }
   ],
   "sources": [
