@@ -42,6 +42,27 @@
       "license": "MIT",
       "version": "0.1.1",
       "web": "./tools/dsh-claude-live/web.json"
+    },
+    {
+      "name": "dsh-flykit",
+      "slug": "dsh-flykit",
+      "ecosystem": "dsh",
+      "description": "flykit for DeepSeek Harness — explorer with live file watch, agent terminals (Claude Code, Pi, Codex), DSH agent tools, searchable model picker, Claude usage bars and a status line. Fly your agents.",
+      "repo": "https://github.com/flykit-cc/dsh-flykit",
+      "install": "dsh plugin --profile web add github:flykit-cc/dsh-flykit",
+      "category": "agents",
+      "keywords": [
+        "dsh-plugin",
+        "deepseek-harness",
+        "cordis",
+        "claude-code",
+        "terminal",
+        "file-editor",
+        "statusline"
+      ],
+      "license": "MIT",
+      "version": "0.1.0",
+      "web": "./tools/dsh-flykit/web.json"
     }
   ]
 }

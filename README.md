@@ -62,6 +62,7 @@ Standalone — not marketplace plugins, installed on their own.
 | Plugin | What it does |
 |---|---|
 | [**dsh-claude-live**](https://github.com/flykit-cc/dsh-claude-live) | Run Claude Code as a subagent inside DeepSeek Harness, with its steps streaming live into the session view. `dsh plugin --profile web add dsh-claude-live` |
+| [**dsh-flykit**](https://github.com/flykit-cc/dsh-flykit) | flykit for DeepSeek Harness — explorer with live file watch, agent terminals (Claude Code, Pi, Codex), DSH agent tools, searchable model picker, Claude usage bars and a status line. `dsh plugin --profile web add github:flykit-cc/dsh-flykit` |
 
 Got something worth adding? Open an issue or see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
