@@ -23,12 +23,13 @@
 
 A collection of small, focused plugins and tools for AI coding agents — the things you actually do: taxes, paperwork, dev workflow, recurring chores, and the cockpit you drive your agents from. Everything here is self-contained and MIT-licensed.
 
-flykit spans two ecosystems today:
+flykit spans three ecosystems today:
 
 | Ecosystem | What lives here | How it is listed |
 |---|---|---|
 | **Claude Code** | Plugins installed through the flykit marketplace, plus standalone companion tools | [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json) (plugins), [`tools.json`](./tools.json) (tools) |
 | **DeepSeek Harness (dsh)** | Harness plugins, each in its own repo | [`tools.json`](./tools.json) |
+| **macOS** | Standalone Mac apps, each in its own repo | [`tools.json`](./tools.json) |
 
 ## Claude Code plugins
 
@@ -64,6 +65,12 @@ Standalone — not marketplace plugins, installed on their own.
 | [**dsh-claude-live**](https://github.com/flykit-cc/dsh-claude-live) | Run Claude Code as a subagent inside DeepSeek Harness, with its steps streaming live into the session view. `dsh plugin --profile web add dsh-claude-live` |
 | [**dsh-flykit**](https://github.com/flykit-cc/dsh-flykit) | flykit for DeepSeek Harness — explorer with live file watch, agent terminals (Claude Code, Pi, Codex), DSH agent tools, searchable model picker, Claude usage bars and a status line. `dsh plugin --profile web add github:flykit-cc/dsh-flykit` |
 
+## macOS apps
+
+| App | What it does |
+|---|---|
+| [**uisper**](https://github.com/flykit-cc/uisper) | Native, fully local dictation for macOS. Hold a key, speak, let go: on-device speech to text and AI cleanup, inserted into any app. [Download](https://github.com/flykit-cc/uisper/releases/latest) |
+
 Got something worth adding? Open an issue or see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## How it works
@@ -71,7 +78,7 @@ Got something worth adding? Open an issue or see [CONTRIBUTING.md](./CONTRIBUTIN
 Two manifests, deliberately separate:
 
 - [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json) is the **Claude Code marketplace contract**. Claude Code reads it directly and only understands Claude Code plugins, so nothing from another ecosystem ever goes in it. Each plugin is a directory under [`plugins/`](./plugins) containing its manifest, skills, scripts, and references.
-- [`tools.json`](./tools.json) is the **ecosystem-neutral registry** for everything that is not a marketplace plugin: standalone Claude Code tools and dsh plugins alike. Each entry carries an `ecosystem` field (`claude-code` or `dsh`), lives in its own repo, and points at a `web.json` sidecar under [`tools/`](./tools).
+- [`tools.json`](./tools.json) is the **ecosystem-neutral registry** for everything that is not a marketplace plugin: standalone Claude Code tools, dsh plugins and macOS apps alike. Each entry carries an `ecosystem` field (`claude-code`, `dsh` or `macos`), lives in its own repo, and points at a `web.json` sidecar under [`tools/`](./tools).
 
 Every entry in either manifest also has a `web.json` sidecar — [`plugins/<name>/web.json`](./plugins/steuer/web.json) for marketplace plugins, [`tools/<slug>/web.json`](./tools/dsh-flykit/web.json) for tools.json entries. That's what [flykit.cc](https://flykit.cc) renders (tagline, features, skills, sources). The site fetches `marketplace.json` + `tools.json` + each `web.json` + live star count at build time.
 
@@ -89,7 +96,8 @@ Every entry in either manifest also has a `web.json` sidecar — [`plugins/<name
   tools.json ───────────────────────► flykit.cc registry fetch
   └── entry.web ──► tools/<slug>/web.json ──► flykit.cc renderer
                     (the tool itself lives in its own repo:
-                     a dsh plugin installs with dsh plugin --profile web add)
+                     a dsh plugin installs with dsh plugin --profile web add,
+                     a macOS app ships as a GitHub release download)
 ```
 
 ## Contributing

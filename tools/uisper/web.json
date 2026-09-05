@@ -1,0 +1,30 @@
+{
+  "displayName": "uisper",
+  "author": "kaiomp",
+  "authorUrl": "https://github.com/kaiomp",
+  "categories": ["macOS", "Dictation", "Productivity"],
+  "tagline": "Hold a key, speak, let go. Clean text lands in whatever app you are typing in.",
+  "description": "A native macOS menu bar app for dictation that runs entirely on device. Speech to text uses Apple's SpeechAnalyzer, streaming words into a pill as you talk; the raw transcript is then rewritten by the small model behind Apple Intelligence, which fixes punctuation and grammar, drops fillers and false starts, and applies self-corrections before the text is inserted at your cursor. No accounts, no cloud, no telemetry — nothing leaves your Mac. Requires an Apple silicon Mac on macOS 26 or newer.",
+  "install": "https://github.com/flykit-cc/uisper/releases/latest",
+  "installNote": "Download uisper-x.y.z.zip from GitHub Releases, unzip it, and move uisper.app to Applications.\nRight-click the app and choose Open once (the build is not notarized), then grant Microphone, Accessibility and Input Monitoring and relaunch.",
+  "externalRepo": "https://github.com/flykit-cc/uisper",
+  "features": [
+    "Hold-to-talk or press-to-toggle, on any hotkey you record by pressing it",
+    "On-device speech to text with Apple SpeechAnalyzer — words appear as you talk",
+    "Apple Intelligence cleanup: punctuation, grammar, fillers, self-corrections",
+    "English, German and Brazilian Portuguese, switched from the menu bar",
+    "Personal vocabulary list, spelled the way you told it to",
+    "Works in every app, including Chrome and Electron, through a paste fallback",
+    "Password fields are respected: with secure input on, the text goes to the clipboard"
+  ],
+  "useCases": [
+    "Dictating prompts and messages instead of typing them",
+    "Anyone who wants dictation that never sends audio off the machine",
+    "Writing in a second language where cleanup does the punctuation for you"
+  ],
+  "screenshots": [
+    { "label": "Live transcription pill", "file": "./screenshots/pill.png" },
+    { "label": "Menu bar: language, cleanup toggle, hold or toggle mode", "file": "./screenshots/menu.png" },
+    { "label": "Settings — click the hotkey field and press any shortcut", "file": "./screenshots/settings.png" }
+  ]
+}

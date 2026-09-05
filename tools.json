@@ -1,7 +1,7 @@
 {
   "$schema": "https://flykit.cc/schemas/tools.json",
   "name": "flykit-registry",
-  "description": "Tools and plugins across ecosystems — Claude Code companions, DeepSeek Harness plugins",
+  "description": "Tools and plugins across ecosystems — Claude Code companions, DeepSeek Harness plugins, macOS apps",
   "owner": {
     "name": "kaiomp"
   },
@@ -63,6 +63,25 @@
       "license": "MIT",
       "version": "0.1.0",
       "web": "./tools/dsh-flykit/web.json"
+    },
+    {
+      "name": "uisper",
+      "slug": "uisper",
+      "ecosystem": "macos",
+      "description": "Native, fully local dictation for macOS. Hold a key, speak, let go: on-device speech to text and AI cleanup, inserted into any app.",
+      "repo": "https://github.com/flykit-cc/uisper",
+      "install": "https://github.com/flykit-cc/uisper/releases/latest",
+      "category": "productivity",
+      "keywords": [
+        "macos",
+        "dictation",
+        "speech-to-text",
+        "apple-intelligence",
+        "local"
+      ],
+      "license": "MIT",
+      "version": "0.1.0",
+      "web": "./tools/uisper/web.json"
     }
   ]
 }
