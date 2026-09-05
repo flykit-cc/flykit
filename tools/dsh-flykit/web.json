@@ -28,7 +28,7 @@
   ],
   "screenshots": [
     {
-      "label": "The flykit panel open beside a dsh web session, with the status line under the composer",
+      "label": "The flykit panel open beside a dsh web session: file tree, an open TypeScript file, and the status line under the composer",
       "file": "./screenshots/hero.png"
     },
     {
@@ -36,7 +36,7 @@
       "file": "./screenshots/agents.png"
     },
     {
-      "label": "Model picker over 435 models, filtered with provider pills and reasoning badges",
+      "label": "Model picker over 435 models, grouped by provider, with provider pills and reasoning badges",
       "file": "./screenshots/model-picker.png"
     }
   ]
