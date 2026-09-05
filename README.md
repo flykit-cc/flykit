@@ -14,7 +14,7 @@
 <br/>
 
 <a href="https://flykit.cc">
-  <img src="https://flykit.cc/opengraph-image.png" alt="flykit — plugins and tools for AI coding agents" width="720" />
+  <img src="https://flykit.cc/opengraph-image" alt="flykit — a cockpit for agentic development" width="720" />
 </a>
 
 </div>
