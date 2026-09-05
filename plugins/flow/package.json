@@ -1,8 +1,0 @@
-{
-  "name": "flow",
-  "version": "0.7.1",
-  "private": true,
-  "scripts": {
-    "test": "node --test scripts/*.test.js hooks/*.test.js"
-  }
-}

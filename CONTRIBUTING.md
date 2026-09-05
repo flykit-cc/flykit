@@ -1,279 +1,65 @@
-# Contributing to flykit
+# Contributing
 
-Thanks for your interest in flykit! This guide covers how to add a new Claude Code plugin or a `tools.json` entry (a standalone tool or app, or a plugin for another ecosystem such as DeepSeek Harness), work on an existing one, develop locally, and submit changes.
+This repo holds one file: `.claude-plugin/marketplace.json`. Every plugin on it
+lives in its own repo, so almost all contribution happens somewhere else.
 
-## Two manifests, two audiences
+## Fixing or extending an existing plugin
 
-flykit lists things for more than one ecosystem, and they are listed in different files:
+Open the issue or pull request in that plugin's repo, not here.
 
-| You are adding | Goes in | Lives in |
-|---|---|---|
-| A Claude Code **marketplace plugin** | `.claude-plugin/marketplace.json` | `plugins/<name>/` in this repo |
-| A Claude Code **standalone tool**, a plugin for **another ecosystem** (e.g. DeepSeek Harness), or a **standalone app** (e.g. a macOS app) | `tools.json` | its own repo, referenced by URL |
+| Plugin | Repo |
+|---|---|
+| flow | [flykit-cc/flow](https://github.com/flykit-cc/flow) |
+| steuer | [flykit-cc/steuer](https://github.com/flykit-cc/steuer) |
 
-`.claude-plugin/marketplace.json` is read by Claude Code itself. It only understands Claude Code plugins — **never put a non-Claude-Code entry in it**, even one that happens to be about Claude Code. Everything else goes in `tools.json`.
+## Adding a plugin
 
-### Adding a `tools.json` entry
+1. **Build it in your own repo.** A Claude Code plugin needs
+   `.claude-plugin/plugin.json` at the root, declaring at least `name`,
+   `version`, `description`, `author` and `license`.
 
-Add an object under `tools`:
+2. **Add a `web.json`** at the root if you want a page on flykit.cc. It carries
+   the display copy: `displayName`, `author`, `authorUrl`, `categories`,
+   `tagline`, `description`, `features`, `useCases`, `skills`, `sources`.
 
-```json
-{
-  "name": "your-thing",
-  "slug": "your-thing",
-  "ecosystem": "dsh",
-  "description": "One line.",
-  "repo": "https://github.com/flykit-cc/your-thing",
-  "npm": "your-thing",
-  "install": "dsh plugin --profile web add your-thing",
-  "category": "agents",
-  "keywords": ["..."],
-  "license": "MIT",
-  "version": "0.1.0",
-  "web": "./tools/your-thing/web.json"
-}
-```
-
-`ecosystem` is required — `claude-code`, `dsh` or `macos` today; add a new value when a new ecosystem shows up. For an ecosystem with no install command, such as a macOS app, `install` is the download URL and `web.json` carries an `installNote` with the steps. Then create `tools/<slug>/web.json` with the same shape used by plugins (see `tools/ghostcode/web.json`), plus `install` and `externalRepo`. `version` here is display metadata only — the source of truth is the tool's own repo, so keep it roughly in sync, no CI enforces it.
-
-## Plugin contents
-
-A Claude Code plugin can bundle any mix of the following. flykit plugins typically lead with skills, but the other types are fair game.
-
-- **Skills** (`skills/<name>/SKILL.md`) — user-invoked slash commands. Exposed as `/<plugin>:<skill>`. See https://docs.claude.com/en/docs/claude-code/skills
-- **Slash commands** (`commands/<name>.md`) — lightweight prompt templates, no YAML body required. See https://docs.claude.com/en/docs/claude-code/slash-commands
-- **Subagents** (`agents/<name>.md`) — specialized personas Claude can delegate to. See https://docs.claude.com/en/docs/claude-code/sub-agents
-- **Hooks** (`hooks/hooks.json`) — shell commands that fire on lifecycle events (PreToolUse, PostToolUse, etc.). See https://docs.claude.com/en/docs/claude-code/hooks
-- **MCP servers** (`.mcp.json` or referenced from `plugin.json`) — external tool servers over the Model Context Protocol. See https://docs.claude.com/en/docs/claude-code/mcp
-
-For the full plugin manifest schema, see https://docs.claude.com/en/docs/claude-code/plugins.
-
-## Repository layout
-
-```
-flykit/
-├── .claude-plugin/
-│   └── marketplace.json     # Claude Code marketplace manifest — marketplace plugins only
-├── tools.json               # ecosystem-neutral registry — standalone tools and dsh plugins
-├── plugins/
-│   └── <plugin-name>/       # One directory per marketplace plugin
-│       ├── .claude-plugin/
-│       │   └── plugin.json
-│       ├── skills/
-│       ├── scripts/
-│       ├── references/
-│       └── README.md
-├── tools/
-│   └── <slug>/
-│       └── web.json         # display sidecar for a tools.json entry (the tool lives in its own repo)
-├── .flykit/
-│   └── announcement.json    # site-wide announcement bar on flykit.cc
-├── scripts/
-│   └── check-plugin-versions.sh   # version guard, also run by CI
-├── README.md
-├── CONTRIBUTING.md          # You are here
-└── LICENSE
-```
-
-## Adding a new plugin
-
-1. **Pick a name.** Lowercase, hyphen-separated, no `flykit-` prefix (the marketplace name supplies that context).
-
-2. **Create the directory:**
-
-   ```
-   plugins/<your-plugin>/
-   ├── .claude-plugin/plugin.json
-   ├── skills/<skill-name>/SKILL.md
-   ├── scripts/                       (if your plugin runs scripts)
-   ├── references/                    (if your plugin has long reference docs)
-   ├── README.md
-   ├── web.json                       (display metadata for flykit.cc)
-   └── LICENSE                        (MIT recommended)
-   ```
-
-3. **Write `plugin.json`** with `name`, `version`, `description`, `author`, `license`, and `keywords`. See `plugins/steuer/.claude-plugin/plugin.json` for an example.
-
-4. **Add an entry** to `.claude-plugin/marketplace.json` under `plugins`:
+3. **Open a PR here** adding one entry to `.claude-plugin/marketplace.json`:
 
    ```json
    {
-     "name": "<your-plugin>",
-     "description": "...",
-     "source": "./plugins/<your-plugin>",
+     "name": "your-plugin",
+     "description": "One line, shown in /plugin.",
+     "source": { "source": "github", "repo": "you/your-plugin" },
      "version": "0.1.0",
-     "category": "...",
+     "category": "productivity",
      "keywords": ["..."],
      "license": "MIT"
    }
    ```
 
-5. **Write `web.json`** (alongside `plugin.json`'s directory, at the plugin root). This is what [flykit.cc](https://flykit.cc) renders — it's separate from `plugin.json` so the Claude Code schema stays clean. See `plugins/steuer/web.json` for the full shape. Required fields:
+   The `version` here must match the `version` in your repo's `plugin.json`. CI
+   fetches your repo and fails the PR if they disagree.
 
-   ```json
-   {
-     "displayName": "Your Plugin",
-     "author": "your-github-handle",
-     "authorUrl": "https://github.com/your-handle",
-     "categories": ["Category A", "Category B"],
-     "tagline": "One-line pitch — shown in cards and hero.",
-     "description": "2–4 sentences. Shown on the plugin detail page.",
-     "features": ["Feature one", "Feature two", "..."],
-     "useCases": ["Who this is for — one line each", "..."],
-     "skills": [
-       { "name": "skill-name", "description": "What it does." }
-     ],
-     "sources": [
-       { "label": "External API", "url": "https://..." }
-     ]
-   }
-   ```
+## Releasing a new version
 
-   Stars + repo URL are fetched live from GitHub at build time — no need to maintain them here.
+An install is keyed by **version**, not by commit. `/plugin update` compares the
+manifest version against the installed one, so shipping a change without bumping
+makes the update a silent no-op — users keep running the old code and nothing
+reports an error. That happened once, on flow 0.2.0, and cost a session to find.
 
-6. **Write at least one skill.** Each skill is a Markdown file with YAML frontmatter:
+So every release is two steps:
 
-   ```yaml
-   ---
-   name: my-skill
-   description: One sentence describing what it does and when to trigger it.
-   argument-hint: [optional-args]
-   allowed-tools: Bash, Read, Write
-   ---
-   ```
+1. Bump `version` in your plugin repo's `.claude-plugin/plugin.json` (and
+   `package.json` if you have one, keeping them equal).
+2. Open a PR here bumping the same number in `marketplace.json`.
 
-   The body is a prompt for Claude — explain the task, the steps, and how to invoke any scripts. **Always reference scripts via `${CLAUDE_PLUGIN_ROOT}`**, never relative paths.
+CI checks that every entry's source repo exists, carries a `plugin.json`, and
+declares the version this manifest claims.
 
-7. **Make scripts black-box CLIs.** Each script should be runnable in isolation, e.g.:
+## Not a Claude Code plugin?
 
-   ```bash
-   node scripts/my-script.js --year 2024 --output ./out
-   ```
+DeepSeek Harness plugins, standalone tools and native apps are not listed here.
+They live in their own repos and are listed on flykit.cc — open an issue on
+[flykit-cc/flykit-web](https://github.com/flykit-cc/flykit-web) to add one to the
+catalog.
 
-   Read configuration from `process.env` and from `~/.config/flykit/<plugin>/config.json`. Print clear error messages when required config is missing.
-
-8. **Sanitize.** No personal data, no real client / merchant names, no credentials. The repo is public.
-
-## Working on an existing plugin
-
-Most contributions are incremental — fixing a bug, adding a skill to an existing plugin, or extending one of its pluggable interfaces. This section is about marketplace plugins, which live in this repo. A `tools.json` entry lives in its own repo: work on it there, and change only its `tools.json` row and `tools/<slug>/web.json` here.
-
-- **Debug locally.** Clone the repo and load the plugin directory directly (see [Local development](#local-development) below). Turn on `--debug` to see hook, MCP, and skill resolution logs. Run scripts in isolation with `node plugins/<plugin>/scripts/<script>.js` to reproduce issues without the Claude Code layer in the way.
-- **Add a new skill / command / agent.** Drop a new file under the relevant directory (`skills/<name>/SKILL.md`, `commands/<name>.md`, `agents/<name>.md`). No manifest change needed — Claude Code discovers them by convention. Bump `version` in `plugin.json` and the matching entry in `marketplace.json`.
-- **Extend a pluggable abstraction.** Some plugins expose internal contracts so new backends can be added without rewriting the plugin. The canonical example is steuer's transaction-source interface: see `plugins/steuer/scripts/sources/README.md` for the shape and a walkthrough of adding a new source. Follow the same pattern (small adapter, one file, documented contract) when introducing similar seams in other plugins.
-- **Don't forget the README.** If user-facing behavior changes, update the plugin's `README.md` — the flykit.cc site renders directly from it.
-
-## Versioning — bump it whenever you change a plugin
-
-**Any change under `plugins/<name>/` — code, docs, a typo — requires a version bump in the same commit.** Update all of these, keeping them identical:
-
-```
-plugins/<name>/.claude-plugin/plugin.json    version
-plugins/<name>/package.json                  version   (when the plugin has one)
-.claude-plugin/marketplace.json              the plugin's entry
-```
-
-Semver against what a user's install experiences:
-
-| Bump | When |
-|---|---|
-| patch | bug fixes, docs, internal refactors |
-| minor | new commands or skills; moved or renamed config paths (that breaks existing setups) |
-| major | a rewrite, or removing something people depend on |
-
-**Why this is mandatory.** The plugin cache is keyed by version — `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>`. `/plugin update` compares **versions, not commits**. Ship a change without bumping and the update becomes a silent no-op: it prints nothing, exits clean, and every user keeps running the old code. This bit flow `0.2.0` on 2026-07-28 and took a full session to diagnose.
-
-Check before you commit:
-
-```bash
-./scripts/check-plugin-versions.sh              # the three files agree
-./scripts/check-plugin-versions.sh --since main # ...and were bumped for what changed
-```
-
-CI runs the same script on pull requests **and on direct pushes to `main`**.
-
-## Local development
-
-For Claude Code marketplace plugins, which live in this repo. Clone it first:
-
-```bash
-git clone https://github.com/flykit-cc/flykit.git
-cd flykit
-```
-
-**Option A — load a single plugin directory for one session.** Use the `--plugin-dir` flag (repeatable):
-
-```bash
-claude --plugin-dir ./plugins/<your-plugin>
-```
-
-**Option B — add the whole repo as a local marketplace.** This mirrors how end-users install from GitHub, but points at your working copy:
-
-```
-# inside Claude Code
-/plugin marketplace add /absolute/path/to/flykit
-/plugin install <your-plugin>@flykit
-```
-
-Re-run `/plugin marketplace update flykit` after you edit `marketplace.json` or a plugin manifest.
-
-**Validate manifests** before opening a PR:
-
-```bash
-claude plugin validate ./plugins/<your-plugin>
-claude plugin validate ./.claude-plugin/marketplace.json
-```
-
-Inside Claude Code, your skills will appear under `/<plugin>:<skill-name>`. Iterate, test, repeat. Add `--debug` for verbose resolution logs.
-
-For pure script changes, you can run the scripts directly with Node, outside Claude Code:
-
-```bash
-node plugins/<your-plugin>/scripts/<script>.js --year 2024
-```
-
-### DeepSeek Harness plugins
-
-A dsh plugin lives in its own repo, so develop it there and add it to a profile from the checkout:
-
-```bash
-npm run build
-dsh plugin --profile web add .            # remove with: dsh plugin --profile web remove <name>
-dsh --profile web --dump-config | grep <name>   # layer present?
-dsh web --port 3080 --no-open             # http://127.0.0.1:3080
-```
-
-Only its `tools.json` row and `tools/<slug>/web.json` land in this repo.
-
-## Code style
-
-- **JavaScript**: CommonJS (Node 22+, what CI runs), 4-space indent, single quotes, trailing semicolons.
-- **Markdown**: ATX headers (`#`), tables for structured data, fenced code blocks with language tags.
-- **JSON**: 2-space indent.
-- **No emojis** in code, comments, or docs unless the user explicitly asked for them.
-- **No personal data** anywhere — sanitize before pushing.
-
-## Pull requests
-
-1. Fork the repo and create a feature branch off `main`.
-2. Make your changes. Keep PRs focused — one plugin or one bug fix at a time.
-3. Bump the plugin's `version` and the matching `marketplace.json` entry — required for *any* change under `plugins/`, see [Versioning](#versioning--bump-it-whenever-you-change-a-plugin). CI enforces this.
-4. Update the plugin's `README.md` if user-facing behavior changed.
-5. Open a PR with a clear description: what changed, why, and how you tested it.
-6. The maintainer reviews and merges. The site at flykit.cc redeploys automatically via GitHub Actions on merge to `main`.
-
-## Announcements
-
-The site-wide announcement bar on [flykit.cc](https://flykit.cc) reads from `.flykit/announcement.json` at the root of this repo (kept outside `.claude-plugin/` so it doesn't pollute the Claude Code schema). The file has four fields: `text`, `href`, `label`, and `id`. Any field may be empty or missing — in which case the bar hides. The `id` is used by the website to remember per-announcement dismissals in `localStorage`; change the `id` to re-show the bar to users who previously dismissed it. Edits land on flykit.cc within about a minute via the `notify-web` workflow.
-
-## Reporting issues
-
-File issues at https://github.com/flykit-cc/flykit/issues. Include:
-- Plugin or tool name and version
-- Version of the agent it runs under — Claude Code, or `dsh --version` for a DeepSeek Harness plugin
-- Steps to reproduce
-- Expected vs actual behavior
-
-## Code of conduct
-
-Be kind. Assume good intent. No harassment, no discrimination. The maintainer reserves the right to remove contributions or contributors that violate this in spirit.
+MIT licensed. By contributing you agree your work ships under the same licence.

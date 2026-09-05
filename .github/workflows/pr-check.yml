@@ -15,140 +15,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify web.json author matches PR author
-        if: github.event_name == 'pull_request'
-        env:
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -e
-          MAINTAINERS="kaiomp"
-          if echo "$MAINTAINERS" | tr ' ' '\n' | grep -qx "$PR_AUTHOR"; then
-            echo "PR author '$PR_AUTHOR' is a maintainer — skipping author check"
-            exit 0
-          fi
-          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- 'plugins/*/web.json' || true)
-          if [ -z "$changed" ]; then
-            echo "No web.json changes in this PR — skipping author check"
-            exit 0
-          fi
-          fail=0
-          while IFS= read -r f; do
-            [ -f "$f" ] || continue
-            declared=$(jq -r '.author // empty' "$f")
-            if [ -z "$declared" ]; then
-              echo "::error file=$f::web.json is missing an 'author' field"
-              fail=$((fail+1))
-            elif [ "$declared" != "$PR_AUTHOR" ]; then
-              echo "::error file=$f::web.json declares author '$declared' but this PR is opened by '$PR_AUTHOR'. Open the PR under the claimed account, or ask a maintainer to land it."
-              fail=$((fail+1))
-            else
-              echo "ok: $f — author '$declared' matches PR author"
-            fi
-          done <<< "$changed"
-          if [ "$fail" -gt 0 ]; then exit 1; fi
-
-      - name: Setup Node 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Validate marketplace.json
         run: jq empty .claude-plugin/marketplace.json
 
-      - name: Validate every plugin.json
+      # Every plugin now lives in its own repo, so the manifest is a list of
+      # addresses. A wrong address is only discoverable at install time, and a
+      # version that disagrees with the plugin's own plugin.json makes
+      # `/plugin update` a silent no-op — the exact failure that cost a session
+      # on flow 0.2.0. Both are checked here instead.
+      - name: Every plugin source resolves and its version agrees
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
-          found=0
-          while IFS= read -r f; do
-            echo "checking $f"
-            jq empty "$f"
-            found=$((found+1))
-          done < <(find plugins -name plugin.json)
-          echo "Validated $found plugin manifest(s)"
-
-      - name: Every plugin in marketplace.json has web.json
-        run: |
-          set -e
-          missing=0
-          while IFS= read -r name; do
-            path="plugins/$name/web.json"
-            if [ ! -f "$path" ]; then
-              echo "::error file=.claude-plugin/marketplace.json::plugin '$name' is listed in marketplace.json but $path is missing. See CONTRIBUTING.md."
-              missing=$((missing+1))
-            else
-              jq empty "$path"
-              echo "ok: $path"
-            fi
-          done < <(jq -r '.plugins[].name' .claude-plugin/marketplace.json)
-          if [ "$missing" -gt 0 ]; then
-            echo "::error::$missing plugin(s) missing web.json"
-            exit 1
-          fi
-
-      - name: Validate tools.json registry
-        run: |
-          set -e
-          jq empty tools.json
+          set -euo pipefail
           fail=0
           while IFS= read -r row; do
-            slug=$(echo "$row" | jq -r '.slug')
-            eco=$(echo "$row" | jq -r '.ecosystem // empty')
-            web=$(echo "$row" | jq -r '.web // empty')
-            if [ -z "$eco" ]; then
-              echo "::error file=tools.json::entry '$slug' is missing an 'ecosystem' field. See CONTRIBUTING.md."
-              fail=$((fail+1))
-            fi
-            path="${web#./}"
-            if [ -z "$web" ] || [ ! -f "$path" ]; then
-              echo "::error file=tools.json::entry '$slug' points at missing web.json '$web'"
-              fail=$((fail+1))
-            else
-              jq empty "$path"
-              echo "ok: $slug ($eco) -> $path"
-            fi
-          done < <(jq -c '.tools[]' tools.json)
-          if [ "$fail" -gt 0 ]; then exit 1; fi
+            name=$(jq -r '.name' <<<"$row")
+            repo=$(jq -r '.source.repo // empty' <<<"$row")
+            declared=$(jq -r '.version // empty' <<<"$row")
 
-      - name: Plugin versions are consistent and bumped
-        env:
-          # On a PR, compare against the merge base. On a push to main, compare
-          # against the commit before the push (`event.before`), which is the
-          # state users' installs were last able to see.
-          BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          set -e
-          # A first push to a new branch reports an all-zero `before` sha; there
-          # is nothing to diff against, so run consistency checks only.
-          if [ -z "$BASE_REF" ] || [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
-            ./scripts/check-plugin-versions.sh
-          else
-            ./scripts/check-plugin-versions.sh --since "$BASE_REF"
-          fi
-
-      - name: Syntax-check plugin scripts
-        run: |
-          set -e
-          count=0
-          while IFS= read -r f; do
-            node --check "$f"
-            count=$((count+1))
-          done < <(find plugins -name '*.js' -not -path '*/node_modules/*')
-          echo "Syntax-checked $count script(s)"
-
-      - name: Run plugin tests
-        run: |
-          set -e
-          ran=0
-          for dir in plugins/*/; do
-            if [ -f "$dir/package.json" ] && jq -e '.scripts.test' "$dir/package.json" > /dev/null; then
-              echo "::group::tests for $dir"
-              (cd "$dir" && npm install --no-audit --no-fund && npm test)
-              echo "::endgroup::"
-              ran=$((ran+1))
+            if [ -z "$repo" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::'$name' has no source.repo"
+              fail=$((fail+1)); continue
             fi
-          done
-          echo "Ran tests for $ran plugin(s)"
+            if [ -z "$declared" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::'$name' has no version"
+              fail=$((fail+1)); continue
+            fi
+
+            manifest=$(gh api "repos/$repo/contents/.claude-plugin/plugin.json" \
+              --jq '.content' 2>/dev/null | base64 -d || true)
+            if [ -z "$manifest" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::'$name' points at $repo, which has no .claude-plugin/plugin.json"
+              fail=$((fail+1)); continue
+            fi
+
+            actual=$(jq -r '.version // empty' <<<"$manifest")
+            if [ "$actual" != "$declared" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::'$name' says $declared but $repo says $actual. An install is keyed by version; a mismatch makes /plugin update a silent no-op."
+              fail=$((fail+1)); continue
+            fi
+            echo "ok: $name $declared -> $repo"
+          done < <(jq -c '.plugins[]' .claude-plugin/marketplace.json)
+          [ "$fail" -eq 0 ]

@@ -9,8 +9,11 @@
     {
       "name": "steuer",
       "description": "German freelancer tax filing — fetch transactions, classify with AI, calculate EÜR, guide through ELSTER",
-      "source": "./plugins/steuer",
-      "version": "0.2.1",
+      "source": {
+        "source": "github",
+        "repo": "flykit-cc/steuer"
+      },
+      "version": "0.3.0",
       "category": "finance",
       "keywords": [
         "tax",
@@ -25,8 +28,11 @@
     {
       "name": "flow",
       "description": "Stack-agnostic AI dev workflow — thirteen slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
-      "source": "./plugins/flow",
-      "version": "0.7.1",
+      "source": {
+        "source": "github",
+        "repo": "flykit-cc/flow"
+      },
+      "version": "0.8.0",
       "category": "workflow",
       "keywords": [
         "workflow",
