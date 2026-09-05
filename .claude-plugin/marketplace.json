@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "flykit",
-  "description": "Open-source Claude Code plugins for everyday workflows",
+  "description": "Plugins and tools for agentic development — Claude Code plugins, DeepSeek Harness plugins, and agent tools. flykit.cc",
   "owner": {
     "name": "kaiomp"
   },
   "plugins": [
     {
       "name": "steuer",
-      "description": "German freelancer tax filing \u2014 fetch transactions, classify with AI, calculate E\u00dcR, guide through ELSTER",
+      "description": "German freelancer tax filing — fetch transactions, classify with AI, calculate EÜR, guide through ELSTER",
       "source": "./plugins/steuer",
       "version": "0.2.1",
       "category": "finance",
@@ -24,7 +24,7 @@
     },
     {
       "name": "flow",
-      "description": "Stack-agnostic AI dev workflow \u2014 thirteen slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
+      "description": "Stack-agnostic AI dev workflow — thirteen slash commands, a focused reviewer agent, and hooks that layer with your project's .flow/ config",
       "source": "./plugins/flow",
       "version": "0.7.1",
       "category": "workflow",
