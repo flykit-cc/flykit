@@ -2,10 +2,15 @@
   "displayName": "dsh-flykit",
   "author": "kaiomp",
   "authorUrl": "https://github.com/kaiomp",
-  "categories": ["DeepSeek Harness", "Agents", "Claude Code"],
-  "tagline": "Turn the dsh web GUI into an agent cockpit — explorer, agent terminals, model picker, usage bars, status line. Fly your agents.",
+  "categories": [
+    "DeepSeek Harness",
+    "Agents",
+    "Claude Code"
+  ],
+  "tagline": "Fly your agents. Turn the dsh web GUI into an agent cockpit — explorer, agent terminals, model picker, usage bars, status line.",
   "description": "A DeepSeek Harness plugin that ships two halves from one manifest: a Cordis host plugin serving routes under /api/flykit/*, and a client bundle that injects React into the shell's slots. It adds an Explorer panel with a CodeMirror editor and live file watch, an Agents tab running real PTY terminals for Claude Code, Pi, Codex or a plain shell, a searchable model picker, Claude subscription usage bars, and a Claude-Code-style status line under the composer. The main DSH agent can drive those terminals itself through the flykit_agent_* tools.",
   "install": "dsh plugin --profile web add github:flykit-cc/dsh-flykit",
+  "installNote": "npm publish is coming. For now install straight from GitHub, or clone the repo and run dsh plugin --profile web add . from the checkout.",
   "externalRepo": "https://github.com/flykit-cc/dsh-flykit",
   "features": [
     "Status line under the composer — idle / thinking / running tool, turn timer, git branch and dirty count, context ring recolour",
@@ -20,5 +25,19 @@
     "Watching and steering N Claude Code runs from one DSH session",
     "Editing files next to the conversation instead of switching to an editor",
     "Harness users who want a cockpit — status, files, terminals — in the web GUI"
+  ],
+  "screenshots": [
+    {
+      "label": "The flykit panel open beside a dsh web session, with the status line under the composer",
+      "file": "./screenshots/hero.png"
+    },
+    {
+      "label": "Agents tab: a live Claude Code terminal with Claude subscription usage bars above it",
+      "file": "./screenshots/agents.png"
+    },
+    {
+      "label": "Model picker over 435 models, filtered with provider pills and reasoning badges",
+      "file": "./screenshots/model-picker.png"
+    }
   ]
 }
